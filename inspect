@@ -1,0 +1,50 @@
+#!/usr/bin/env nix-shell
+#!nix-shell -i Rscript -p R rPackages.optparse rPackages.tidyverse
+
+suppressPackageStartupMessages(require(tidyverse))
+suppressPackageStartupMessages(require(optparse))
+options(scipen=999)
+
+to_sql_data_type <- function(col_type) {
+  switch (
+    col_type,
+    "collector_character" = "VARCHAR",
+    "TEXT"
+  )
+}
+compare <- function(file, schema) {
+  system2("comm -12 {file} {schema}")
+}
+inspect <- function(file, options) {
+  col_types <- spec_tsv(file=file,col_types=options$col_types,guess_max=1000000)
+  write(glue::glue('We guessed the following column types for {file}:'), stderr())
+  sink(stderr());print(col_types);sink();
+  column_types <- c()
+  for (idx in 1:length(col_types$cols)) {
+    column_types <- c(column_types, class(col_types$cols[[idx]])[1])
+  }
+  schema <- data.frame(table_name=file,
+                       column_name=names(col_types$cols),
+                       data_type=map_chr(column_types, ~to_sql_data_type(.)))
+  all_columns_sorted <- schema[do.call(order, schema),]
+  all_columns_sorted
+}
+usage <- 'inspect [options] file
+
+Inspect a .csv file to guess at its schema and data types'
+
+parser <- OptionParser(usage=usage)
+parser <- add_option(parser, c("-v", "--validate"),default='',
+                     help="Validate against a pre-defined schema file")
+parser <- add_option(parser, c("-t", "--col-types"),default='',
+                     help="Specify column type spec")
+parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
+
+write(glue::glue('\nInspecting {parsed$args[1]}...\n'), stderr())
+schema <- inspect(parsed$args[1],parsed$options)
+if (parsed$options$validate != "") {
+  pre_defined_schema <- read_csv(file=parsed$options$validate)
+  write_csv(setdiff(schema,pre_defined_schema[do.call(order, schema),]), file('/dev/stdout', raw=T), col_names=TRUE, na='');
+} else {
+  write_csv(schema, file('/dev/stdout', raw=T), col_names=TRUE, na='');
+}

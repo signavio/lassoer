@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+set -a
+usage() {
+	cat <<-EOF
+		Extract data from a source system and output the result to STDOUT
+
+		USAGE:
+		   extract [OPTION...] <STDIN|FILE>
+
+		OPTIONS:
+		   -c      Class path
+		   -d      Show debug output
+		   -h      Show this message
+		   -p      Parameterized query values
+		   -r      Driver class
+		   -i      Input file
+		   -s      Connection String
+
+
+		EXAMPLES:
+		   > # Will source connection params from a .env file
+		     # located in the current directory
+		     extract < incident.sql > datasets/incident.csv
+	EOF
+}
+
+extract () {
+	add_driver_specific_options_to_connection_string "${DRIVER_CLASS}"
+	read -r -d '' script <<-EOF
+		suppressPackageStartupMessages(require(tidyverse));
+		options(scipen=999);
+		options(java.parameters="-Xmx32g");
+		library(RJDBC);
+		driver <- JDBC(driverClass='${DRIVER_CLASS}', classPath=${CLASS_PATH}, identifier.quote="'");
+		conn <- dbConnect(driver,'${CONNECTION_STRING}');
+		df <- dbGetQuery(conn,'${QUERY_STRING_ESCAPED}'${PARAMS});
+		# Replace all newlines with a space so that we do not break csv parsers
+		df<-mutate_all(df, function(x) gsub('\n', ' ', x));
+		summary(mutate_if(df, is.character, factor));
+		write.table(df,'/dev/stdout',sep=',',na='',quote=T,qmethod='double',row.names=F);
+	EOF
+	Rscript --vanilla -e "${script}" &
+}
+_kill_child () {
+	kill "${PID}"
+	exit 1
+}
+add_driver_specific_options_to_connection_string () {
+	case "$1" in
+		"cdata.jdbc.servicenow.ServiceNowDriver")
+			OPTIONS+="Readonly=true;InitiateOAuth=OFF;"
+			OPTIONS+="RTK=424E52455641535552425641454E545035584B453"
+			OPTIONS+="03534350000000000000000000000000000000038585"
+			OPTIONS+="93241365645000037425355314E44425A3835590000;"
+			CLASS_PATH="'${CLASS_PATH}'"
+			CONNECTION_STRING="${CONNECTION_STRING};${OPTIONS};"
+			;;
+		"cdata.jdbc.saperp.SAPERPDriver")
+			OPTIONS+="RTK=525952465641535552425641454E545035584B453"
+			OPTIONS+="035343500000000000000000000000000000000534947"
+			OPTIONS+="4E4156494F0000473841464A36424A443759480000;"
+			CLASS_PATH="c('${CLASS_PATH}','${CLASS_PATH%/*}/sapjco3.1/sapjco3.jar')"
+			CONNECTION_STRING="${CONNECTION_STRING};${OPTIONS};"
+			;;
+		"cdata.jdbc.salesforce.SalesforceDriver")
+			OPTIONS+="RTK=524652455641535552425641454E545035584B45"
+			OPTIONS+="30353435000000000000000000000000000000003858"
+			OPTIONS+="59324136564500005244435A31474244464530320000;"
+			CLASS_PATH="'${CLASS_PATH}'"
+			CONNECTION_STRING="${CONNECTION_STRING};${OPTIONS};"
+			;;
+		*)
+			echo "Error: unrecognized DRIVER_CLASS:"\
+			"$DRIVER_CLASS" >> /dev/tty
+			exit 1
+			;;
+	esac
+}
+check_connection_params () {
+	if [ -z "$DRIVER_CLASS" ]
+	then
+		cat <<-'EOF' | tee /dev/tty
+		Please specify a valid driver class in your .env file or use option -r"
+
+		Example using option -r:
+		extract -r "cdata.jdbc.servicenow.ServiceNowDriver" < incident.sql > incident.csv'
+
+		Example using .env file:
+		$ cat .env
+		DRIVER_CLASS="cdata.jdbc.servicenow.ServiceNowDriver"
+		$ extract < incident.sql > incident.csv
+		EOF
+		exit 1
+	fi
+	if [ -z "$CLASS_PATH" ]
+	then
+		cat <<-'EOF' | tee /dev/tty
+		Please specify a location to the java .jar driver files in your .env file or use option -c"
+
+		Example using option -c:
+		extract -c "~/.cdata/cdata.jdbc.servicenow.jar" < incident.sql > incident.csv'
+
+		Example using .env file:
+		$ cat .env
+		CLASS_PATH="/home/user/.cdata/cdata.jdbc.servicenow.jar"
+		$ extract < incident.sql > incident.csv
+		EOF
+		exit 1
+	fi
+	if [ -z "$CONNECTION_STRING" ]
+	then
+		cat <<-'EOF' | tee /dev/tty
+		Please specify a valid connection string in your .env file or use option -s"
+
+		Example using option -s:
+		extract -s 'jdbc:servicenow:User=johndoe;Password="p@ssw0rd";Instance=acmestaging;'\
+		< incident.sql > incident.csv'
+
+		Example using .env file:
+		$ cat .env
+		CONNECTION_STRING='jdbc:servicenow:User=johndoe;Password="p@ssw0rd";Instance=acmestaging;'
+		$ extract < incident.sql > incident.csv
+		EOF
+		exit 1
+	fi
+}
+
+while getopts "dh?r:c:s:i:p:" OPTION; do
+	case $OPTION in
+	c)
+		ARG_C="${OPTARG}"
+		;;
+	d)
+		set -x
+		;;
+	h|\?)
+		usage
+		exit 0
+		;;
+	i)
+		INPUT_FILE="$(<"${OPTARG}")"
+		;;
+	p)
+		PARAMS=",${OPTARG}"
+		;;
+	r)
+		ARG_R="${OPTARG}"
+		;;
+	s)
+		ARG_S="${OPTARG}"
+		;;
+	esac
+done
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
+
+# Read sensitive configuration settings from environment variables
+if [ -f .env ]
+then
+	# shellcheck source=/dev/null
+	source .env
+fi
+CLASS_PATH="${ARG_C:-$CLASS_PATH}"
+DRIVER_CLASS="${ARG_R:-$DRIVER_CLASS}"
+CONNECTION_STRING="${ARG_S:-$CONNECTION_STRING}"
+if [ -z "$INPUT_FILE" ]
+then
+	STDIN="$(</dev/stdin)"
+	STDIN_ESCAPED="$(echo "$STDIN" | sed -e "s/'/\\\'/g" -e 's/"/\\"/g')"
+	QUERY_STRING_ESCAPED="${STDIN_ESCAPED}"
+else
+	QUERY_STRING_ESCAPED="$(echo "${INPUT_FILE}" | sed -e "s/'/\\\'/g" -e 's/"/\\"/g')"
+fi
+check_connection_params "${DRIVER_CLASS}"
+extract
+PID=$!
+# Kill child process on SIGINT
+trap '_kill_child "${PID}"' INT
+wait "${PID}"

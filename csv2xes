@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+set -a
+usage() {
+	cat <<-EOF
+		Convert csv eventlog and attributes to a XES file
+
+		USAGE:
+		   csv2xes [OPTION...] [FILE...]
+
+		OPTIONS:
+		   -d      Show debug output
+		   -h      Show this message
+		   -c      Specify file containing column type specs using R syntax
+		   -x	   Print xml header and footer
+
+		EXAMPLES:
+		   > csv2xes -c column_types.txt combined_eventlog_attributes.csv 
+	EOF
+}
+get_column_data_types() {
+	${RSCRIPT} --vanilla - <<-EOF
+      		suppressPackageStartupMessages(require(tidyverse));
+      		suppressPackageStartupMessages(require(jsonlite));
+                options(scipen=999);
+
+          	write('\nLoading ${1}...\n', stderr())
+		col_types <- spec_tsv(file='$1',col_types=list(${COL_TYPES}),guess_max=1000000)
+    		write('We guessed the following column types for ${1}:', stderr())
+         	sink(stderr());print(col_types);sink();
+		result <- vector("list", length(col_types\$cols))
+		for (idx in 1:length(col_types\$cols)) {
+		  result[idx] <- class(col_types\$cols[[idx]])[1]
+		}
+		names(result) = names(col_types\$cols)
+		writeLines(toJSON(result), stdout())
+	EOF
+}
+csv2xes() {
+	METADATA=$(get_column_data_types "$1")
+	NODE_PATH=/usr/lib/node_modules
+	NODE_OPTIONS="--max-old-space-size=30000"
+	node - <<-EOF
+	const _ = require('lodash')
+	const fs = require('fs')
+	const readline = require('readline')
+	const metadata = _.toPairs(JSON.parse('${METADATA}'))
+	let linesProcessed = 0
+	let last_case_id = ''
+	let isHeaderLine = true
+	let start_case_level_attributes = 0
+
+	const escapeXml = (line) => {
+	  return line.replace(/&(?!amp;)(?!lt;)(?!gt;)(?!quot;)(?!apos;)/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;')
+            .split('\t')
+	}
+	try {
+	  process.stderr.write(\`[\${new Date().toISOString()}] Generating XES log...\n\`)
+	  const rl = readline.createInterface({
+	    input: fs.createReadStream('$1')
+          })
+	  const xmlHeader =
+	   \`<?xml version="1.0" encoding="UTF-8"?>
+	     <log xmlns="http://www.xes-standard.org/"
+		  xes.version="1.0" xes.features="nested-attributes"
+	     >
+	     <extension name="Time" prefix="time" uri="http://www.xes-standard.org/time.xesext"/>
+	     <extension name="Concept" prefix="concept" uri="http://www.xes-standard.org/concept.xesext"/>
+	     <extension name="Identity" prefix="identity" uri="http://www.xes-standard.org/identity.xesext"/>
+	   \`
+	  const writeCaseLevelAttributes = (columns) => {
+	    process.stdout.write('<trace>')
+	    // Write case id
+	    process.stdout.write(\`<string key="concept:name" value="\${escapeXml(columns[0])}"/>\`)
+	    // Write other case level attributes
+	    for (let i=start_case_level_attributes; i < columns.length; i++) {
+		// Remove "case:" prefix
+		attrName = metadata[i][0].split(':')[1]
+		dataType = metadata[i][1][0]
+	        if (!_.isEmpty(columns[i])) {
+		  switch (dataType){
+		    case 'collector_date':
+		      process.stdout.write(\`<date key="\${escapeXml(attrName)}"
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_datetime':
+		      process.stdout.write(\`<date key="\${escapeXml(attrName)}"
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_integer':
+		      process.stdout.write(\`<int key="\${escapeXml(attrName)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_number', 'collector_double':
+		      process.stdout.write(\`<float key="\${escapeXml(attrName)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_logical':
+		      process.stdout.write(\`<boolean key="\${escapeXml(attrName)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    default:
+		      process.stdout.write(\`<string key="\${escapeXml(attrName)}" 
+					   value="\${escapeXml(columns[i])}"/>\`)
+		      break
+	  	  }
+  	        }
+             }
+          }
+	  const writeEventLevelAttributes = (columns) => {
+	    process.stdout.write('<event>')
+	    // Write event name
+	    process.stdout.write(\`<string key="concept:name"
+				 value="\${escapeXml(columns[1])}"/>\`)
+	    // Write event end timestamp
+	    let timestamp = new Date(columns[2]).toISOString()
+	    process.stdout.write(\`<date key="time:timestamp"
+				 value="\${timestamp}"/>\`)
+	    // Write other event level attributes
+	    for (let i=3; i < start_case_level_attributes; i++) {
+		attr_name = metadata[i][0]
+		data_type =  metadata[i][1][0]
+	        if (!_.isEmpty(columns[i])) {
+		  switch (dataType){
+		    case 'collector_date':
+		      process.stdout.write(\`<date key="\${escapeXml(attr_name)}"
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_datetime':
+		      process.stdout.write(\`<date key="\${escapeXml(attr_name)}"
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_integer':
+		      process.stdout.write(\`<int key="\${escapeXml(attr_name)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_number', 'collector_double':
+		      process.stdout.write(\`<float key="\${escapeXml(attr_name)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    case 'collector_logical':
+		      process.stdout.write(\`<boolean key="\${escapeXml(attr_name)}" 
+					value="\${escapeXml(columns[i])}"/>\`)
+		      break
+		    default:
+		      process.stdout.write(\`<string key="\${escapeXml(attr_name)}" 
+					   value="\${escapeXml(columns[i])}"/>\`)
+		      break
+	  	  }
+  	        }
+             }
+	    process.stdout.write('</event>')
+          }
+	  if (!${NO_HEADER_FOOTER}) {
+	    process.stdout.write(xmlHeader)
+	  }
+	  rl.on('line', (line) => {
+	    columns = line.split('\\t')
+	    if (isHeaderLine) {
+	      isHeaderLine = false
+	      for (let i=0; i < columns.length; i++) {
+	        if (columns[i].startsWith("case:")) {
+	          start_case_level_attributes = i
+		  break
+	        }
+              }
+	      last_case_id = columns[0]
+	      return
+	    }
+	    if (last_case_id !== columns[0]) {
+	      writeCaseLevelAttributes(columns)	    
+            }
+  	    // also output event level attributes, if they exist
+	    if (start_case_level_attributes !== 0) {
+	      writeEventLevelAttributes(columns)
+  	    }
+	    process.stdout.write('</trace>')
+	    linesProcessed++
+	    if(linesProcessed % 100000 === 0) {
+	       process.stderr.write(\`[\${new Date().toISOString()}] Processed \${linesProcessed} lines...\n\`)
+	    }
+  	  })
+	  rl.once('close', () => {
+	    if (!${NO_HEADER_FOOTER}) {
+	      process.stdout.write('</log>')
+	    }
+          })
+	} catch (err) {
+	  console.error(err.message)
+	}
+
+	EOF
+}
+
+RSCRIPT="$(command -v Rscript)"
+VERBOSE=true
+NO_HEADER_FOOTER=false
+while getopts "c:dh?x" OPTION; do
+	case $OPTION in
+		c)
+			COL_TYPES="$(<${OPTARG})"
+			;;
+		d)
+			set -x
+			;;
+		h|\?)
+			usage
+			exit 0
+			;;
+		x)
+			NO_HEADER_FOOTER=true
+			;;
+
+	esac
+done
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
+
+if $VERBOSE; then
+	csv2xes "$@"
+else
+	csv2xes "$@" 2>&1
+fi

@@ -1,0 +1,13 @@
+{
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/signavio/lassoer.git"
+  },
+  "dependencies": {
+    "csv": "5.3.1",
+    "faker": "Marak/faker.js",
+    "lodash": "4.17.15",
+    "neodoc": "2.0.2"
+  },
+  "license": "MIT"
+}

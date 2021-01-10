@@ -1,0 +1,88 @@
+#!/usr/bin/env nix-shell
+#!nix-shell -i Rscript -p R rPackages.optparse rPackages.tidyverse rPackages.janitor icu
+
+suppressPackageStartupMessages(require(tidyverse))
+suppressPackageStartupMessages(require(optparse))
+require(sqltypes)
+options(scipen=999)
+verify <- function(col_spec, schema) {}
+prescrub <- function(file) {
+  # Convert input into valid UTF-8 and ignore invalid character sequences
+  to_utf8 <- 'uconv --from-callback skip --to-code UTF-8'
+  # Remove all carriage return characters (usually used in dos style line endings)
+  tr <- 'tr -d "\\r"'
+  # Replace control chars (except '\t' and '\n') with single space
+  sub_cntrl_chars <- 'perl -pe "s/[\\N{U+00}-\\N{U+08}\\N{U+0B}-\\N{U+1F}\\N{U+7F}]/ /g"'
+  glue::glue('{to_utf8} "{file}" | {tr} | {sub_cntrl_chars}')
+}
+read_delim_file <- function(file, options) {
+  read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,
+             guess_max=1e6,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,
+             quote=options$quote,col_types=options$col_types,locale=options$locale)
+}
+read_excel_file <- function(file, options) {
+  read_excel(file=file, na=options$na_values, col_names=TRUE, trim_ws=TRUE, guess_max=1e6)
+}
+scrub <- function(df) {
+   df %>%
+      # Remove dirty, misbehaving rows
+      {
+         if (length(problems(df)$row) > 0)
+            slice(.data=., -(problems(df)$row))
+         else .
+      } %>%
+      # Remove duplicates
+      distinct %>%
+      # Prettify column names
+      janitor::clean_names() %>%
+      # Remove trailing backslashes to play nicely with csv parsers
+      mutate_if(is.character, ~ gsub('(\\x{005c}+)$', '', ., perl=T)) %>%
+      # Whitespace all control characters to play nicely with csv parsers
+      mutate_if(is.character, ~ gsub('[[:cntrl:]]', ' ', ., perl=T))
+}
+is_excel_file <- function(file) {
+  xsl_file="^application/.*ms-excel.*"
+  xslx_file="^application/.*spreadsheet.*"
+  also_xslx_file="^application/.*zip.*"
+  file == xsl_file || file == xslx_file || file == also_xslx_file
+}
+get_delimiter <- function(head) {
+  # Return the first occurence of comma, semicolon, pipe or tab
+  header <- strsplit(head, split='')[[1]]
+  delim_idx <- grep('[,;|\t]', header)[1]
+  header[delim_idx]
+}
+
+usage <- 'scrub [options] file
+
+Clean-up .csv or .xls file and output result as .tsv to STDOUT'
+parser <- OptionParser(usage=usage)
+parser <- add_option(parser, c("-n", "--na-values"),default='',
+                     help="Specify values considered to be NA")
+parser <- add_option(parser, c("-t", "--col-types"),default='',
+                     help="Specify column type spec")
+parser <- add_option(parser, c("-l", "--locale"),default=locale(),
+                     help="Specify locale for date and currency parsing")
+parser <- add_option(parser, c("-q", "--quote"),default='"',
+                     help="Specify the character used to quote strings")
+parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
+
+write(glue::glue('\nScrubbing {parsed$args[1]}...'), stderr())
+if (is_excel_file(parsed$args[1])) {
+   df <- read_excel_file(parsed$args[1],options)
+   write(glue::glue('We guessed the following column types for {parsed$args[1]}:'), stderr())
+   sink(stderr());print(spec(df));sink();
+   if (parsed$options$schema != '') {
+    verify(spec(df), read_csv(file=parsed$options$schema))
+   df <- scrub(df)
+   }
+  
+} else {
+   readLines(parsed$args[1],n=1)
+   parsed$options$delimiter <- get_delimiter(readLines(parsed$args[1],n=1))
+   df <- read_delim_file(parsed$args[1],parsed$options)
+   write(glue::glue('We guessed the following column types for {parsed$args[1]}:'), stderr())
+   sink(stderr());print(spec(df));sink();
+   df <- scrub(df)
+}
+write_tsv(df,file('/dev/stdout',raw=T),na='');

@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+set -a
+usage() {
+	cat <<-EOF
+		Load CSV files into a sql database
+
+		USAGE:
+		   load [OPTION...] [FILE...]
+
+		OPTIONS:
+		   -d      Show debug output
+		   -h      Show this message
+		   -o      Location of sql database (when using sqlite)
+		   -t      Type of sql database (sqlite or postgresql)
+		   -f      Location of file containing relevant credentials
+		   -s      The database schema to load CSV files into
+
+
+		EXAMPLES:
+		   > load -t sqlite -o sqlite.db accounts.csv leads.csv
+		   > load -t postgresql -s acme_2020-07-testDrive_sap-O2C \\
+		     -f ~/dtools.env bkpf.csv bseg.csv
+	EOF
+}
+load_into_postgresql() {
+	# shellcheck source=/dev/null
+	. "${ENV_FILE}"
+	local DB_URI="postgresql://${DTOOLS_USERNAME}:${DTOOLS_PASSWORD}@${DTOOLS_HOST}/${DTOOLS_DB}"
+	if [[ ! "$APPEND_TO_SCHEMA" ]]; then
+		psql "$DB_URI" \
+			-c "DROP SCHEMA IF EXISTS \"$DB_SCHEMA\" CASCADE;" \
+			-c "CREATE SCHEMA \"$DB_SCHEMA\";"
+	fi
+	# Leverage csvsql to generate the CREATE TABLE statement
+	parallel --will-cite \
+	"head -n 100 {} | csvsql \
+		--db='${DB_URI}' \
+		--db-schema='${DB_SCHEMA}' \
+		--no-constraints \
+		--create-if-not-exists \
+		--insert \
+		--tabs \
+		--tables {/.} \
+		--no-inference" ::: "$@"
+	# Use \COPY to actually insert data from .csv files
+	parallel --will-cite \
+	"psql '${DB_URI}' -c \
+		'\\COPY \"${DB_SCHEMA}\".{/.} \
+		FROM {} WITH \
+		DELIMITER AS '\''	'\'' \
+		NULL AS '\'''\'' \
+		CSV HEADER \
+		QUOTE AS '\''\"'\'' \
+		ESCAPE AS '\''\"'\'''" ::: "$@"
+}
+load_into_sqlite() {
+	rm "${OUTPUT}"
+	cat <<-EOF | tee /dev/tty | sqlite3 "${OUTPUT}"
+		.headers on
+		.mode csv
+		.separator "\\t"
+		$(
+		for file in "$@"; do
+		# Import files containing whitespace into tablenames containing underscores
+		BASENAME=$(basename "$file")
+		PREFIX=${BASENAME%.*}
+		echo ".import '$file' ""${PREFIX//[- ]/_}"""
+		done
+		)
+	EOF
+}
+load() {
+	case "$TYPE" in
+		sqlite)
+			load_into_sqlite "$@"
+			;;
+		postgresql)
+			load_into_postgresql "$@"
+			;;
+		*)
+			echo "The database of type: '$TYPE' is not supported"
+			exit 1
+			;;
+	esac
+}
+check_sanity_of_options () {
+	if ( [[ "$TYPE" == "postgresql" ]] ) && [[ ! -f "$ENV_FILE" ]]; then
+		cat <<-EOF
+			Please provide the location to a file containing the credentials
+			(environment variables) of the database you want to connect to
+			
+			EXAMPLE:
+			   > load -f /home/user/dtools.env -t postgresql \\
+			     -s acme_2020-07-testDrive_sap-O2C bkpf.csv bseg.csv
+		EOF
+		exit 1
+	elif [[ "$TYPE" == "postgresql" ]] && [[ -z "$DB_SCHEMA" ]]; then
+		cat <<-EOF
+			Please specify the database schema to load CSV files into
+			
+			EXAMPLE:
+			   > load -s acme_2020-05-poc_sn-I2R -t postgresql \\
+			     -f /home/user/dtools.env system_audit.csv incidents.csv 
+		EOF
+		exit 1
+	elif [[ "$TYPE" == "sqlite" ]] && [[ -z "$OUTPUT" ]]; then
+		cat <<-EOF
+			The path to the sqlite database must be specified
+			
+			EXAMPLE:
+			   > load -o sqlite.db accounts.csv leads.csv
+		EOF
+		exit 1
+	elif [[ -z "$TYPE" ]]; then
+		cat <<-EOF
+			The type of sql database must be specified
+			
+			EXAMPLE:
+			   > load -t sqlite -o sqlite.db accounts.csv leads.csv
+		EOF
+		exit 1
+	fi
+
+
+}
+
+RSCRIPT="$(command -v Rscript)"
+VERBOSE=true
+while getopts "dh?o:t:f:s:" OPTION; do
+	case $OPTION in
+		d)
+			set -x
+			;;
+		h|\?)
+			usage
+			exit 0
+			;;
+		a)
+			APPEND_TO_SCHEMA=true
+			;;
+		o)
+			OUTPUT="${OPTARG}"
+			;;
+		t)
+			TYPE="${OPTARG}"
+			;;
+		f)
+			ENV_FILE="${OPTARG}"
+			;;
+		s)
+			DB_SCHEMA="${OPTARG}"
+			;;
+	esac
+done
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
+
+check_sanity_of_options
+if $VERBOSE; then
+	load "$@"
+else
+	load "$@" 2>&1
+fi
