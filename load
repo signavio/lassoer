@@ -98,7 +98,7 @@ def load_into_athena(env, create_stmt):
             'Database': env['ATHENA_NAME']
         },
         ResultConfiguration={
-            'OutputLocation': f's3://{env["BUCKET_NAME"]}/logs/',
+            'OutputLocation': f's3://{env["BUCKET_NAME"]}/__logs/',
             'EncryptionConfiguration': {
                 'EncryptionOption': 'SSE_S3'
             }
