@@ -1,163 +1,123 @@
-#!/usr/bin/env bash
-set -a
-usage() {
-	cat <<-EOF
-		Load CSV files into a sql database
+#!/usr/bin/env python3
+from optparse import OptionParser
+from pathlib import Path
+from dotenv import dotenv_values
+import logging
 
-		USAGE:
-		   load [OPTION...] [FILE...]
+logging.basicConfig(level=logging.INFO)
+parser = OptionParser(
+    #   EXAMPLES:
+    #      > load -t sqlite -o sqlite.db accounts.csv leads.csv
+    #      > load -t postgresql -s acme_2020-07-testDrive_sap-O2C \\
+    #        -f ~/dtools.env bkpf.csv bseg.csv
+    usage="%prog [options] file...\nLoad CSV files into a sql database",
+    version="%prog v0.3.0"
+)
+parser.add_option("-d", "--drop-schema", dest="drop_schema", action="store_true",
+                  help="Drop existing database schema before create")
+parser.add_option("-e", "--environment-file", dest="environment_file",
+                  help="Location of environment file containing credentials",
+                  default=Path('.') / '.env')
+parser.add_option("-s", "--db-schema", dest="db_schema", type="string",
+                  help="The database schema to load .csv files into")
+parser.add_option("-t", "--type", dest="db_type", type="string", default="postgresql",
+                  help="Type of sql database (postgresql or athena)")
+(options, args) = parser.parse_args()
+env = dotenv_values(options.environment_file)
 
-		OPTIONS:
-		   -d      Show debug output
-		   -h      Show this message
-		   -o      Location of sql database (when using sqlite)
-		   -t      Type of sql database (sqlite or postgresql)
-		   -f      Location of file containing relevant credentials
-		   -s      The database schema to load CSV files into
+def load_into_postgresql(env, create_stmt):
+    from sqlalchemy import create_engine, text
+    from os.path import basename, splitext
+    db_uri = f'postgres://{env["PSQL_USERNAME"]}:{env["PSQL_PASSWORD"]}' +\
+    f'@{env["PSQL_HOST"]}/{env["PSQL_DB"]}'
+    (table_name, _) = splitext(basename(basename(args[0])))
+    engine = create_engine(db_uri)
+    conn = engine.connect()
+    if options.drop_schema:
+        drop_schema_then_create = text(f'\
+        DROP SCHEMA IF EXISTS {options.db_schema} CASCADE;\
+        CREATE SCHEMA {options.db_schema};')
+        conn.execute(drop_schema_then_create)
+    if options.db_schema:
+        conn.execute(f'SET search_path TO {options.db_schema};')
+    create_stmt = f'CREATE TABLE IF NOT EXISTS {table_name} ( ' + create_stmt
+    conn.execute(create_stmt)
+    psql_copy(db_uri, options.db_schema, args[0])
 
+def create_stmt_ddl_from(csv_metadata_file):
+    import csv
+    create_stmt = ""
+    with open(csv_metadata_file, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        first_row = next(reader)
+        create_stmt = f'{first_row["column_name"]} {first_row["data_type"]},'
+        for row in reader:
+            create_stmt += f' {row["column_name"]} {row["data_type"]},'
+        create_stmt = create_stmt[:-1] + ')'
+    return create_stmt
 
-		EXAMPLES:
-		   > load -t sqlite -o sqlite.db accounts.csv leads.csv
-		   > load -t postgresql -s acme_2020-07-testDrive_sap-O2C \\
-		     -f ~/dtools.env bkpf.csv bseg.csv
-	EOF
-}
-load_into_postgresql() {
-	# shellcheck source=/dev/null
-	. "${ENV_FILE}"
-	local DB_URI="postgresql://${DTOOLS_USERNAME}:${DTOOLS_PASSWORD}@${DTOOLS_HOST}/${DTOOLS_DB}"
-	if [[ ! "$APPEND_TO_SCHEMA" ]]; then
-		psql "$DB_URI" \
-			-c "DROP SCHEMA IF EXISTS \"$DB_SCHEMA\" CASCADE;" \
-			-c "CREATE SCHEMA \"$DB_SCHEMA\";"
-	fi
-	# Leverage csvsql to generate the CREATE TABLE statement
-	parallel --will-cite \
-	"head -n 100 {} | csvsql \
-		--db='${DB_URI}' \
-		--db-schema='${DB_SCHEMA}' \
-		--no-constraints \
-		--create-if-not-exists \
-		--insert \
-		--tabs \
-		--tables {/.} \
-		--no-inference" ::: "$@"
-	# Use \COPY to actually insert data from .csv files
-	parallel --will-cite \
-	"psql '${DB_URI}' -c \
-		'\\COPY \"${DB_SCHEMA}\".{/.} \
-		FROM {} WITH \
-		DELIMITER AS '\''	'\'' \
-		NULL AS '\'''\'' \
-		CSV HEADER \
-		QUOTE AS '\''\"'\'' \
-		ESCAPE AS '\''\"'\'''" ::: "$@"
-}
-load_into_sqlite() {
-	rm "${OUTPUT}"
-	cat <<-EOF | tee /dev/tty | sqlite3 "${OUTPUT}"
-		.headers on
-		.mode csv
-		.separator "\\t"
-		$(
-		for file in "$@"; do
-		# Import files containing whitespace into tablenames containing underscores
-		BASENAME=$(basename "$file")
-		PREFIX=${BASENAME%.*}
-		echo ".import '$file' ""${PREFIX//[- ]/_}"""
-		done
-		)
-	EOF
-}
-load() {
-	case "$TYPE" in
-		sqlite)
-			load_into_sqlite "$@"
-			;;
-		postgresql)
-			load_into_postgresql "$@"
-			;;
-		*)
-			echo "The database of type: '$TYPE' is not supported"
-			exit 1
-			;;
-	esac
-}
-check_sanity_of_options () {
-	if ( [[ "$TYPE" == "postgresql" ]] ) && [[ ! -f "$ENV_FILE" ]]; then
-		cat <<-EOF
-			Please provide the location to a file containing the credentials
-			(environment variables) of the database you want to connect to
-			
-			EXAMPLE:
-			   > load -f /home/user/dtools.env -t postgresql \\
-			     -s acme_2020-07-testDrive_sap-O2C bkpf.csv bseg.csv
-		EOF
-		exit 1
-	elif [[ "$TYPE" == "postgresql" ]] && [[ -z "$DB_SCHEMA" ]]; then
-		cat <<-EOF
-			Please specify the database schema to load CSV files into
-			
-			EXAMPLE:
-			   > load -s acme_2020-05-poc_sn-I2R -t postgresql \\
-			     -f /home/user/dtools.env system_audit.csv incidents.csv 
-		EOF
-		exit 1
-	elif [[ "$TYPE" == "sqlite" ]] && [[ -z "$OUTPUT" ]]; then
-		cat <<-EOF
-			The path to the sqlite database must be specified
-			
-			EXAMPLE:
-			   > load -o sqlite.db accounts.csv leads.csv
-		EOF
-		exit 1
-	elif [[ -z "$TYPE" ]]; then
-		cat <<-EOF
-			The type of sql database must be specified
-			
-			EXAMPLE:
-			   > load -t sqlite -o sqlite.db accounts.csv leads.csv
-		EOF
-		exit 1
-	fi
+def psql_copy(db_uri, db_schema, csv_file):
+   from os.path import basename, splitext
+   from subprocess import Popen, PIPE
+   (table_name, _) = splitext(basename(csv_file))
+   psql_copy_cmd = [
+    'psql', db_uri,
+    '-c', f'\COPY "{db_schema}".{table_name} ' +\
+    f'FROM {csv_file} WITH ' +\
+    "DELIMITER AS '\t' " +\
+    "NULL AS '' " +\
+    "CSV HEADER " +\
+    "QUOTE AS '\"' " +\
+    "ESCAPE AS '\"'"
+    ]
+   process = Popen(psql_copy_cmd, stdout=PIPE, stderr=PIPE)
+   stdout, stderr = process.communicate()
+   if len(stdout) > 0:
+       rows_copied = stdout.decode("utf-8")[:-1] 
+       print(f'{rows_copied} rows from {csv_file} to "{db_schema}".{table_name}')
+   if len(stderr) > 0:
+       print(stderr.decode("utf-8")[:-1])
 
+def load_into_athena(env, create_stmt):
+    import boto3
+    from botocore.config import Config
+    from os.path import basename, splitext
+    import re
+    aws_session = boto3.Session(
+        region_name = 'eu-central-1',
+        aws_access_key_id = env["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key = env["AWS_SECRET_ACCESS_KEY"]
+    )
+    csv_file = basename(args[0])
+    (table_name, _) = splitext(csv_file)
+    s3 = aws_session.resource('s3')
+    s3.meta.client.upload_file(args[0], env['BUCKET_NAME'], f"{table_name}/{csv_file}")
+    client = aws_session.client('athena')
+    query = f"CREATE EXTERNAL TABLE IF NOT EXISTS {table_name} (" +\
+            re.sub("VARCHAR", "string", create_stmt) + " " +\
+            "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' " +\
+            f"LOCATION 's3://{env['BUCKET_NAME']}/{table_name}/' " +\
+            'TBLPROPERTIES ("skip.header.line.count"="1")'
+    response = client.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={
+            'Database': env['ATHENA_NAME']
+        },
+        ResultConfiguration={
+            'OutputLocation': f's3://{env["BUCKET_NAME"]}/logs/',
+            'EncryptionConfiguration': {
+                'EncryptionOption': 'SSE_S3'
+            }
+        },
+        WorkGroup=env['ATHENA_WORKGROUP']
+    )
+    print(response)
 
-}
-
-RSCRIPT="$(command -v Rscript)"
-VERBOSE=true
-while getopts "dh?o:t:f:s:" OPTION; do
-	case $OPTION in
-		d)
-			set -x
-			;;
-		h|\?)
-			usage
-			exit 0
-			;;
-		a)
-			APPEND_TO_SCHEMA=true
-			;;
-		o)
-			OUTPUT="${OPTARG}"
-			;;
-		t)
-			TYPE="${OPTARG}"
-			;;
-		f)
-			ENV_FILE="${OPTARG}"
-			;;
-		s)
-			DB_SCHEMA="${OPTARG}"
-			;;
-	esac
-done
-shift $((OPTIND-1))
-[ "${1:-}" = "--" ] && shift
-
-check_sanity_of_options
-if $VERBOSE; then
-	load "$@"
-else
-	load "$@" 2>&1
-fi
+if options.db_type == "postgresql":
+    create_stmt = create_stmt_ddl_from(f"{args[0]}.metadata")
+    load_into_postgresql(env, create_stmt)
+elif options.db_type == "athena":
+    create_stmt = create_stmt_ddl_from(f"{args[0]}.metadata")
+    load_into_athena(env, create_stmt)
+else:
+    print(f"The database of type `{options.db_type}` is not supported")
