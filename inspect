@@ -4,7 +4,7 @@ suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(sqltypes))
 options(scipen=999)
 
-#TODO use with --verify flag
+#TODO use with --validate flag
 compare <- function(file, schema) {
   system2("comm -12 {file} {schema}")
 }
@@ -24,7 +24,7 @@ usage <- 'inspect [options] file
 Inspect a .csv file and generate a SQL DDL compatible metadata file'
 
 parser <- OptionParser(usage=usage)
-parser <- add_option(parser, c("-v", "--validate"),default='',
+parser <- add_option(parser, c("-f", "--validate-file"),default='',
                      help="Validate against a pre-defined schema file")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
