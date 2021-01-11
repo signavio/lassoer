@@ -4,16 +4,12 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 parser = OptionParser(
-    #   EXAMPLES:
-    #      > load -t sqlite -o sqlite.db accounts.csv leads.csv
-    #      > load -t postgresql -s acme_2020-07-testDrive_sap-O2C \\
-    #        -f ~/dtools.env bkpf.csv bseg.csv
-    usage="%prog [options] file...\nLoad CSV files into a sql database",
+    usage="%prog [options] file...\n\nLoad CSV files into a sql database",
     version="%prog v0.3.0"
 )
 parser.add_option("-d", "--drop-schema", dest="drop_schema", action="store_true",
                   help="Drop existing database schema before create")
-parser.add_option("-e", "--environment-file", dest="environment_file",
+parser.add_option("-f", "--environment-file", dest="environment_file",
                   help="Location of environment file containing credentials",
                   default=Path('.') / '.env')
 parser.add_option("-s", "--db-schema", dest="db_schema", type="string",
@@ -43,14 +39,14 @@ def load_into_postgresql(env, create_stmt):
     psql_copy(db_uri, options.db_schema, args[0])
 
 def create_stmt_ddl_from(csv_metadata_file):
-    import csv
+    import csv, re
     create_stmt = ""
     with open(csv_metadata_file, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         first_row = next(reader)
-        create_stmt = f'{first_row["column_name"]} {first_row["data_type"]},'
+        create_stmt = f'{first_row["column_name"]} {re.findall("[^(]+", first_row["data_type"])[0]},'
         for row in reader:
-            create_stmt += f' {row["column_name"]} {row["data_type"]},'
+            create_stmt += f' {row["column_name"]} {re.findall("[^(]+", row["data_type"])[0]},'
         create_stmt = create_stmt[:-1] + ')'
     return create_stmt
 
