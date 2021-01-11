@@ -69,6 +69,13 @@ add_driver_specific_options_to_connection_string () {
 			CLASS_PATH="'${CLASS_PATH}'"
 			CONNECTION_STRING="${CONNECTION_STRING};${OPTIONS};"
 			;;
+		"cdata.jdbc.sapsuccessfactors.SAPSuccessFactorsDriver")
+            OPTIONS+="RTK=474252465641535552425641454E545035584B45"
+            OPTIONS+="30353435000000000000000000000000000000005855"
+            OPTIONS+="323752565A5300005456553035423543375646370000;"
+            CLASS_PATH="'${CLASS_PATH}'"
+            CONNECTION_STRING="${CONNECTION_STRING};${OPTIONS};"
+            ;;
 		*)
 			echo "Error: unrecognized DRIVER_CLASS:"\
 			"$DRIVER_CLASS" >> /dev/tty
