@@ -2,9 +2,7 @@
 from optparse import OptionParser
 from pathlib import Path
 from dotenv import dotenv_values
-import logging
 
-logging.basicConfig(level=logging.INFO)
 parser = OptionParser(
     #   EXAMPLES:
     #      > load -t sqlite -o sqlite.db accounts.csv leads.csv
