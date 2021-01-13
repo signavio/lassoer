@@ -44,6 +44,7 @@ inspect <- function(file, options) {
       options
     )
   }
+  sink(stderr());print(col_types);sink();
   column_types <- c()
   for (idx in 1:length(col_types$cols)) {
     column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]]))
@@ -58,23 +59,26 @@ compare <- function(file, schema) {
   system2("comm -12 {file} {schema}")
 }
 is_excel_file <- function(file) {
-  xsl_file="^application/.*ms-excel.*"
-  xslx_file="^application/.*spreadsheet.*"
-  also_xslx_file="^application/.*zip.*"
-  file == xsl_file || file == xslx_file || file == also_xslx_file
+  mime_type <- system2("file", c("--mime-type", shQuote(file)), stdout=TRUE)
+  re <- str_c(
+    "application/.*ms-excel.*|",
+    "application/.*spreadsheet.*|",
+    "application/.*zip.*"
+  )
+  str_detect(mime_type, re)
 }
 get_delimiter <- function(head) {
   # Return the first occurence of comma, semicolon, pipe or tab
   header <- strsplit(head, split='')[[1]]
-  delim_idx <- grep('[,;|\t]', header)[1]
+  delim_idx <- grep('[,;\\|\t]', header)[1]
   header[delim_idx]
 }
 get_locale <- function(options) {
   loc <- list(
     date_format = as.cols(glue::glue("DATE('{options$date_format}')"))$format,
     time_format = as.cols(glue::glue("TIME('{options$time_format}')"))$format,
-    decimal_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])99")[3],
-    grouping_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])99")[2]
+    decimal_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])?9?9?")[3],
+    grouping_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])?9?9?")[2]
   )
   with_empty_options_removed <- loc[loc != "" & !is.na(loc)]
   if (length(with_empty_options_removed) == 0) return(default_locale())
@@ -82,14 +86,15 @@ get_locale <- function(options) {
 } 
 spec_with_ref_fmt <- function(df, options) {
   spec <- spec(df)
+  sink(stderr());print(spec);sink();
   new_spec <- c()
   for (idx in 1:length(spec$cols)) {
     column_name <- names(spec$cols[idx])
     data_type <- class(spec$cols[[idx]])[1]
-    is_date_not_empty <- !is.na(options$date_format) || options$date_format != '' || !is.null(options$date_format)
+    is_date_not_empty <- !is.na(options$date_format) || options$date_format != ''
     is_time_not_empty <- !is.na(options$time_format) || options$time_format != ''
+    is_number_not_empty <- !is.na(options$number_format) || options$number_format != ''
     is_datetime_not_empty <- !is.na(options$datetime_format) || options$datetime_format != ''
-    f <- as.cols(glue::glue("DATE('{options$date_format}')"))
     new_col <- switch (
       data_type,
       "collector_date" = 
@@ -129,10 +134,10 @@ spec_with_ref_fmt <- function(df, options) {
   as.col_spec(new_spec)
 }
 
-schema <- inspect(parsed$args[1],parsed$options)
+schema <- inspect(parsed$args[1], parsed$options)
 if (parsed$options$validate != "") {
   pre_defined_schema <- read_csv(file=parsed$options$validate)
   write_csv(setdiff(schema,pre_defined_schema[do.call(order, schema),]), file('/dev/stdout', raw=T), col_names=TRUE, na='');
 } else {
-  write_csv(schema, file('/dev/stdout', raw=T), col_names=TRUE, na='');
+  write_delim(schema, file('/dev/stdout', raw=T), delim="|", col_names=TRUE, na='');
 }
