@@ -46,11 +46,11 @@ def create_stmt_ddl_from(csv_metadata_file):
     import csv, re
     create_stmt = ""
     with open(csv_metadata_file, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
+        reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
-        create_stmt = f'"{first_row["column_name"]}" {re.findall("[^(]+", first_row["data_type"])[0]},'
+        create_stmt = f'{first_row["column_name"]} {re.findall("[^(]+", first_row["data_type"])[0]},'
         for row in reader:
-            create_stmt += f' "{row["column_name"]}" {re.findall("[^(]+", row["data_type"])[0]},'
+            create_stmt += f' {row["column_name"]} {re.findall("[^(]+", row["data_type"])[0]},'
         create_stmt = create_stmt[:-1] + ')'
     return create_stmt
 
