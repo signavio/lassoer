@@ -93,7 +93,7 @@ def load_into_athena(env, path_to_csv_file):
     client = aws_session.client('athena')
     create_stmt = re.sub("VARCHAR|TIME", "string", create_stmt) 
     query = f"CREATE EXTERNAL TABLE IF NOT EXISTS {table_name} (" +\
-            re.sub("VARCHAR", "string", create_stmt) + " " +\
+            create_stmt + " " +\
             "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' " +\
             f"LOCATION 's3://{env['BUCKET_NAME']}/{table_name}/' " +\
             'TBLPROPERTIES ("skip.header.line.count"="1")'
