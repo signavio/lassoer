@@ -8,10 +8,11 @@ const fs = require('fs')
 const neodoc = require('neodoc')
 const args = neodoc.run(`
 Usage:
-  anonymize [-h] [--key=<KEY>] [--plan=<FILE>] -
+  anonymize [-h] [--key=<KEY>] [--delimiter=<DELIM>] [--plan=<FILE>] -
 
 Options:
   -p --plan       Schema file specifying which columns to anonymize and how
+  -d --delimiter <delim>  Delimiter to use for parsing STDIN [default: '\t']
   -h --help       Show this screen
   -k --key <key>  Key to use when deanonymizing the results [default: /dev/urandom]
   --version       Show version
@@ -24,14 +25,15 @@ const parsePlan = (file) => {
   // the output file. The last column specifies the faker function to use to 
   // anonymize the values in the columns of the input file
   return _.map(_.initial(data.split('\n')), (row) => {
-	  const inputColumnName = row.split(',')[0]
-	  const outputColumnName = row.split(',')[1]
-	  const fakerFunction = row.split(',')[2]
-	  const anonymizeIf = row.split(',')[3]
-	  return [inputColumnName, outputColumnName, fakerFunction, anonymizeIf]
+          const inputColumnName = row.split(',')[0]
+          const outputColumnName = row.split(',')[1]
+          const fakerFunction = row.split(',')[2]
+          const anonymizeIf = row.split(',')[3]
+          return [inputColumnName, outputColumnName, fakerFunction, anonymizeIf]
   })
 }
 const deanonymizingKey = args['--key'] || crypto.randomBytes(32)
+const delimiter = args['--delimiter'] || '\t'
 const anonymizationPlan = parsePlan(args['--plan'])
 const fakerSeedNumber = (key, value) => {
   const hmacUsingDeanonymizingKeyAndRecordValue = crypto
@@ -49,28 +51,28 @@ const fakerSeedNumber = (key, value) => {
 // Constrains the columns to be included in the output .csv file
 // based on the values in the anonymization plan file
 const columnIndicesToIncludeInOutput = (plan) => {
-	// Always retrieve the tail on the unzip anonymization plan file
-	// since the first line should be the header line
-	const newColumnNamesToOutput = _.tail(_.unzip(plan)[1])
-	let csvRecordIndicesToOutput = []
-	for (let i=0; i < newColumnNamesToOutput.length; i++) {
-		if (!_.isEmpty(newColumnNamesToOutput[i])) {
-			csvRecordIndicesToOutput.push(i)
-		}
-	}
-	return csvRecordIndicesToOutput
+        // Always retrieve the tail on the unzip anonymization plan file
+        // since the first line should be the header line
+        const newColumnNamesToOutput = _.tail(_.unzip(plan)[1])
+        let csvRecordIndicesToOutput = []
+        for (let i=0; i < newColumnNamesToOutput.length; i++) {
+                if (!_.isEmpty(newColumnNamesToOutput[i])) {
+                        csvRecordIndicesToOutput.push(i)
+                }
+        }
+        return csvRecordIndicesToOutput
 }
 // Rewrite the .csv header based on the new column names provided
 // in the anonymization plan file
 const headerLineWriter = (plan) => {
-	const secondColumn = _.tail(_.unzip(plan)[1])
-	let newColumnNamesToOutput = []
-	for (let i=0; i < secondColumn.length; i++) {
-		if (!_.isEmpty(secondColumn[i])) {
-			newColumnNamesToOutput.push(secondColumn[i])
-		}
-	}
-	process.stdout.write(newColumnNamesToOutput.join('\t') + '\n')
+        const secondColumn = _.tail(_.unzip(plan)[1])
+        let newColumnNamesToOutput = []
+        for (let i=0; i < secondColumn.length; i++) {
+                if (!_.isEmpty(secondColumn[i])) {
+                        newColumnNamesToOutput.push(secondColumn[i])
+                }
+        }
+        process.stdout.write(newColumnNamesToOutput.join('\t') + '\n')
 }
 
 const recordIndicesToOutput = columnIndicesToIncludeInOutput(anonymizationPlan)
@@ -78,14 +80,14 @@ const recordsToAnonymize = _.tail(_.unzip(anonymizationPlan)[2])
 const anonymizeIfConditions = _.tail(_.unzip(anonymizationPlan)[3])
 
 const reader = fs.createReadStream('/dev/stdin')
-const parser = csv.parse({delimiter: '\t', from_line: 2})
+const parser = csv.parse({delimiter: delimiter, skip_lines_with_error: true, from_line: 2})
 const transformer = csv.transform(
     (record) => {
     let anonymized = []
     for (let i of recordIndicesToOutput) {
       if (!_.isEmpty(recordsToAnonymize[i])
-	      && !_.isEmpty(record[i])
-	      && eval(anonymizeIfConditions[i])
+              && !_.isEmpty(record[i])
+              && eval(anonymizeIfConditions[i])
       ) {
         faker.seed(fakerSeedNumber(deanonymizingKey, record[i]))
         anonymized.push(faker.fake(`{{${recordsToAnonymize[i]}}}`))
