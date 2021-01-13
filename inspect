@@ -1,34 +1,42 @@
 #!/usr/bin/env Rscript
 suppressPackageStartupMessages(require(tidyverse))
 suppressPackageStartupMessages(require(optparse))
+suppressPackageStartupMessages(require(readxl))
 suppressPackageStartupMessages(require(sqltypes))
 options(scipen=999)
 
 usage <- 'inspect [options] file
 
-Inspect a .csv file and generate a SQL DDL compatible metadata file'
+Inspect a .csv file and generate a SQL DDL compatible metadata file
+
+All locale specific formatting options should be specified using
+the golang reference time `Mon Jan 2 15:04:05 MST 2006` and
+locale specific numeric formatting options as `8,999.99`'
 
 parser <- OptionParser(usage=usage)
 parser <- add_option(parser, c("-f", "--validate-file"),default='',
                      help="Validate against a pre-defined schema file")
 parser <- add_option(parser, c("-d", "--date-format"),default='',
-                     help="Local specific date format used in the data")
+                     help="Locale specific date format used in the data")
 parser <- add_option(parser, c("-t", "--time-format"),default='',
-                     help="Local specific time format used in the data")
+                     help="Locale specific time format used in the data")
 parser <- add_option(parser, c("-m", "--datetime-format"),default='',
-                     help="Local specific datetime format used in the data")
+                     help="Locale specific datetime format used in the data")
 parser <- add_option(parser, c("-n", "--numeric-format"),default='',
-                     help="Local specific numeric format used in the data")
+                     help="Locale specific numeric format used in the data")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
 inspect <- function(file, options) {
   locale <- get_locale(options)
   col_types <- c() 
-  if (is_excel_file(system2("file", file, stdout=TRUE))) {
-    col_types <- spec_with_ref_fmt(
-      read_excel_file(file=file,guess_max=1e6,locale=locale,col_types=cols()),
-      options
-    )
+  if (is_excel_file(file)) {
+    msg <- glue::glue(str_c(
+      'Unable to generate SQL DDL metadata file from an excel file\n',
+      'Convert the excel file `{file}` to .tsv\n',
+      'using the `scrub` utility first, then rerun this command\n'
+    ))
+    write(msg, stderr())
+    quit(status=1)
   } else {
     delimiter <- get_delimiter(readLines(file,n=1))
     col_types <- spec_with_ref_fmt(
