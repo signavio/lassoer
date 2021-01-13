@@ -4,21 +4,6 @@ suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(sqltypes))
 options(scipen=999)
 
-#TODO use with --validate flag
-compare <- function(file, schema) {
-  system2("comm -12 {file} {schema}")
-}
-inspect <- function(file, options) {
-  col_types <- spec_tsv(file=file,guess_max=1000000)
-  column_types <- c()
-  for (idx in 1:length(col_types$cols)) {
-    column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]]))
-  }
-  schema <- data.frame(table_name=str_extract(file, "[^\\.]+"),
-                       column_name=names(col_types$cols),
-                       data_type=column_types)
-  schema
-}
 usage <- 'inspect [options] file
 
 Inspect a .csv file and generate a SQL DDL compatible metadata file'
@@ -26,7 +11,115 @@ Inspect a .csv file and generate a SQL DDL compatible metadata file'
 parser <- OptionParser(usage=usage)
 parser <- add_option(parser, c("-f", "--validate-file"),default='',
                      help="Validate against a pre-defined schema file")
+parser <- add_option(parser, c("-d", "--date-format"),default='',
+                     help="Local specific date format used in the data")
+parser <- add_option(parser, c("-t", "--time-format"),default='',
+                     help="Local specific time format used in the data")
+parser <- add_option(parser, c("-m", "--datetime-format"),default='',
+                     help="Local specific datetime format used in the data")
+parser <- add_option(parser, c("-n", "--numeric-format"),default='',
+                     help="Local specific numeric format used in the data")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
+
+inspect <- function(file, options) {
+  locale <- get_locale(options)
+  col_types <- c() 
+  if (is_excel_file(system2("file", file, stdout=TRUE))) {
+    col_types <- spec_with_ref_fmt(
+      read_excel_file(file=file,guess_max=1e6,locale=locale,col_types=cols()),
+      options
+    )
+  } else {
+    delimiter <- get_delimiter(readLines(file,n=1))
+    col_types <- spec_with_ref_fmt(
+      read_delim(file=file,delim=delimiter,guess_max=1e6,locale=locale,col_types=cols()),
+      options
+    )
+  }
+  column_types <- c()
+  for (idx in 1:length(col_types$cols)) {
+    column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]]))
+  }
+  schema <- data.frame(table_name=str_extract(basename(file), "[^\\.]+"),
+                       column_name=names(col_types$cols),
+                       data_type=column_types)
+  schema
+}
+#TODO use with --verify flag
+compare <- function(file, schema) {
+  system2("comm -12 {file} {schema}")
+}
+is_excel_file <- function(file) {
+  xsl_file="^application/.*ms-excel.*"
+  xslx_file="^application/.*spreadsheet.*"
+  also_xslx_file="^application/.*zip.*"
+  file == xsl_file || file == xslx_file || file == also_xslx_file
+}
+get_delimiter <- function(head) {
+  # Return the first occurence of comma, semicolon, pipe or tab
+  header <- strsplit(head, split='')[[1]]
+  delim_idx <- grep('[,;|\t]', header)[1]
+  header[delim_idx]
+}
+get_locale <- function(options) {
+  loc <- list(
+    date_format = as.cols(glue::glue("DATE('{options$date_format}')"))$format,
+    time_format = as.cols(glue::glue("TIME('{options$time_format}')"))$format,
+    decimal_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])99")[3],
+    grouping_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])99")[2]
+  )
+  with_empty_options_removed <- loc[loc != "" & !is.na(loc)]
+  if (length(with_empty_options_removed) == 0) return(default_locale())
+  do.call(locale, with_empty_options_removed)
+} 
+spec_with_ref_fmt <- function(df, options) {
+  spec <- spec(df)
+  new_spec <- c()
+  for (idx in 1:length(spec$cols)) {
+    column_name <- names(spec$cols[idx])
+    data_type <- class(spec$cols[[idx]])[1]
+    is_date_not_empty <- !is.na(options$date_format) || options$date_format != '' || !is.null(options$date_format)
+    is_time_not_empty <- !is.na(options$time_format) || options$time_format != ''
+    is_datetime_not_empty <- !is.na(options$datetime_format) || options$datetime_format != ''
+    f <- as.cols(glue::glue("DATE('{options$date_format}')"))
+    new_col <- switch (
+      data_type,
+      "collector_date" = 
+      {
+        if (is_date_not_empty) {
+          format <- as.cols(glue::glue('DATE("{options$date_format}")'))$format
+          setNames(list(col_date(format=format)), column_name)
+        } else {
+          setNames(list(col_date()), column_name)
+        }
+      },
+      "collector_time" = 
+      {
+        if (is_time_not_empty) {
+          format <- as.cols(glue::glue('TIME("{options$time_format}")'))$format
+          setNames(list(col_time(format=format)), column_name)
+        } else {
+          setNames(list(col_time()), column_name)
+        }
+      },
+      "collector_datetime" =
+      {
+        if (is_datetime_not_empty) {
+          format <- as.cols(glue::glue('TIMESTAMP("{options$datetime_format}")'))$format
+          setNames(list(col_datetime(format=format)), column_name)
+        } else {
+          setNames(list(col_datetime()), column_name)
+        }
+      },
+    )
+    if (is.null(new_col)) {
+      new_spec <- c(new_spec, setNames(list(spec$cols[[idx]]), column_name))
+    } else {
+      new_spec <- c(new_spec, new_col)
+    }
+  }  
+  as.col_spec(new_spec)
+}
 
 schema <- inspect(parsed$args[1],parsed$options)
 if (parsed$options$validate != "") {
