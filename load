@@ -38,7 +38,7 @@ def load_into_postgresql(env, csv_file):
         conn.execute(drop_schema_then_create)
     if options.db_schema:
         conn.execute(f'SET search_path TO "{options.db_schema}";')
-    create_stmt = f'CREATE TABLE IF NOT EXISTS "{table_name}" ( ' + create_stmt + ";"
+    create_stmt = f'CREATE TABLE IF NOT EXISTS {table_name} ( ' + create_stmt + ";"
     conn.execute(create_stmt)
     psql_copy(db_uri, options.db_schema, csv_file)
 
@@ -48,9 +48,15 @@ def create_stmt_ddl_from(csv_metadata_file):
     with open(csv_metadata_file, newline='') as csvfile:
         reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
-        create_stmt = f'{first_row["column_name"]} {re.findall("[^(]+", first_row["data_type"])[0]},'
+        if first_row["data_type"].startswith("DECIMAL"):
+            create_stmt = f'{first_row["column_name"]} {first_row["data_type"]},'
+        else:
+            create_stmt = f'{first_row["column_name"]} {re.findall("[^(]+", first_row["data_type"])[0]},'
         for row in reader:
-            create_stmt += f' {row["column_name"]} {re.findall("[^(]+", row["data_type"])[0]},'
+            if row["data_type"].startswith("DECIMAL"):
+                create_stmt += f' {row["column_name"]} {row["data_type"]},'
+            else:
+                create_stmt += f' {row["column_name"]} {re.findall("[^(]+", row["data_type"])[0]},'
         create_stmt = create_stmt[:-1] + ')'
     return create_stmt
 
