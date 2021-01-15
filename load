@@ -82,27 +82,89 @@ def psql_copy(db_uri, db_schema, csv_file):
    if len(stderr) > 0:
        print(stderr.decode("utf-8")[:-1])
 
+def create_pyarrow_schema(column_names, data_types):
+    import pyarrow as pa
+    fields = []
+    names_types = zip(column_names, data_types)
+    for (n, t) in names_types:
+        if str(t).startswith("DECIMAL"):
+            fields.append((str(n), pa.decimal128(38, 20)))
+        elif str(t).startswith("NUMERIC"):
+            fields.append((str(n), pa.decimal128(38, 20)))
+        elif str(t).startswith("VARCHAR"):
+            fields.append((str(n), pa.string()))
+        elif str(t).startswith("TIMESTAMP"):
+            fields.append((str(n), pa.timestamp('us',tz="UTC")))
+        elif str(t).startswith("TIME"):
+            # Since CSV conversion to time64 is not supported
+            fields.append((str(n), pa.string()))
+        elif str(t).startswith("DATE"):
+            fields.append((str(n), pa.date64()))
+        elif str(t).startswith("INTEGER"):
+            fields.append((str(n), pa.int64()))
+        elif str(t).startswith("FLOAT"):
+            fields.append((str(n), pa.float64()))
+        elif str(t).startswith("BOOLEAN"):
+            fields.append((str(n), pa.bool_()))
+        else:
+            fields.append((str(n), pa.string()))
+    return pa.schema(fields)
+
+def as_parquet(csv_file):
+    from pyarrow import csv
+    from pyarrow import parquet
+    import io
+    result = io.BytesIO()
+    csv_parse_options = csv.ParseOptions(delimiter="\t")
+    schema_parse_options = csv.ParseOptions(delimiter="|")
+    schema = csv.read_csv(
+        f"{csv_file}.metadata",
+        parse_options=schema_parse_options
+    )
+    pyarrow_schema = create_pyarrow_schema(schema["column_name"], schema["data_type"])
+    csv_convert_options = csv.ConvertOptions(column_types=pyarrow_schema)
+    parquet_table = csv.read_csv(
+            csv_file,
+            parse_options=csv_parse_options,
+            convert_options=csv_convert_options
+    )
+    w = parquet.ParquetWriter(
+        where=result,
+        schema=pyarrow_schema,
+        compression="SNAPPY",
+        flavor="spark"
+    )
+    w.write_table(parquet_table)
+    return result
+
 def load_into_athena(env, path_to_csv_file):
     import boto3, re, json
     from botocore.config import Config
     from os.path import basename, splitext
+    from pyarrow import csv
     aws_session = boto3.Session(
         region_name = env["AWS_REGION_NAME"],
         aws_access_key_id = env["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key = env["AWS_SECRET_ACCESS_KEY"]
     )
     (table_name, _) = splitext(basename(path_to_csv_file))
-    create_stmt = create_stmt_ddl_from(f"{path_to_csv_file}.metadata")
+    print(f'Convert {path_to_csv_file} to parquet format')
+    parquet = as_parquet(path_to_csv_file)
     s3 = aws_session.resource('s3')
-    s3.meta.client.upload_file(path_to_csv_file, env['BUCKET_NAME'], f"{table_name}/{basename(path_to_csv_file)}")
-    print(f'Copy from {path_to_csv_file} to s3://{env["BUCKET_NAME"]}/{table_name}/{basename(path_to_csv_file)}')
+    print(f'Copy in memory parquet buffer to s3://{env["BUCKET_NAME"]}/{table_name}/{basename(path_to_csv_file)}.parquet')
+    s3.Object(
+        env['BUCKET_NAME'],
+        f"{table_name}/{basename(path_to_csv_file)}.parquet"
+    ).put(Body=parquet.getvalue())
+    create_stmt = create_stmt_ddl_from(f"{path_to_csv_file}.metadata")
     client = aws_session.client('athena')
     create_stmt = re.sub("VARCHAR|TIME", "string", create_stmt) 
     query = f"CREATE EXTERNAL TABLE IF NOT EXISTS {table_name} (" +\
             create_stmt + " " +\
-            "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' " +\
+            "STORED AS PARQUET " +\
             f"LOCATION 's3://{env['BUCKET_NAME']}/{table_name}/' " +\
-            'TBLPROPERTIES ("skip.header.line.count"="1")'
+            'TBLPROPERTIES ("parquet.compression"="SNAPPY");'
+    print(f'Sending the following CREATE STATEMENT query to athena:\n{query}')
     response = client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={
