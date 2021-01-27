@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+usage() {
+        cat <<-EOF
+        Usage: archive [OPTION...] FOLDER|FILE
+
+        Archive (compress then encrypt) a file or folder
+
+	Will initialize the ~/.lassoer directory (default)
+        and add public/private keypair if it doesn't exist
+
+	Options:
+	-h      Show this message
+	-x      Unarchive file (decrypt then decompress)
+        -c      Override path to .lassoer directory
+	EOF
+}
+initialize_keypair () {
+        echo -n "It looks like you don't have a Public/Private "
+        echo "keypair stored in the $CONF_DIR directory"
+        echo "Let me a create a new keypair for you"
+        mkdir -p "$CONF_DIR"
+        echo "Generating Public/Private keypair and storing in $CONF_DIR"
+        if ! age-keygen | age -p -o "$PRIVKEY_PATH"; then
+                if [ -f "$PRIVKEY_PATH" ]; then
+                        rm "$PRIVKEY_PATH"
+                fi
+                exit 1
+        fi
+        echo "Save your passphrase in your password manager then paste it"
+        echo "in the terminal here again to verify"
+        if ! pub=$(age -d "$PRIVKEY_PATH"); then
+                rm "$PRIVKEY_PATH"
+                exit 1
+        fi
+        echo "$pub" | grep -o 'age[[:alnum:]]*$' > "$PUBKEY_PATH"
+        echo "Success! Your private key has been saved to \`$PRIVKEY_PATH\`"
+        echo "and you public key has been saved to \`$PUBKEY_PATH\`"
+        archive "$@"
+}
+
+archive () {
+        if [ ! -d "$CONF_DIR" ]; then
+                initialize_keypair "$@"
+        fi
+        if [ ! -f "$PUBKEY_PATH" ] && [ ! -f "$PRIVKEY_PATH" ]; then
+                initialize_keypair "$@"
+        fi
+        if [ -f "$1" ] || [ -d "$1" ]; then
+                tar c "$1" | pigz | age -r "$(<"$PUBKEY_PATH")" > "$(basename "$1").tar.gz.age"
+                echo "Created $(basename "$1").tar.gz.age archive"
+                read -r -p "Should I delete original \`$(basename "$1")\` file? (answer with y/n): " wants_delete 
+                if [[ $wants_delete == [yY] ]]; then
+                        rm -rf "$1"
+                fi
+        else
+                echo "Unable to find file or folder \`$1\`"
+                exit 1
+        fi
+}
+
+unarchive () {
+        if [ -f "$1" ] || [ -d "$1" ]; then
+                if pwd_good=$(age -d "$PRIVKEY_PATH"); then
+                        echo "$pwd_good" \
+                                | age -d -i - "$1" \
+                                | pigz -d \
+                                | tar x -C .
+                        echo "Extracted $1 to $(basename -s .tar.gz.age "$1")"
+                        rm "$1"
+                fi
+        else
+                echo "Unable to find file or folder \`$1\`"
+                exit 1
+        fi
+}
+
+clean_up () {
+        echo "entered clean_up"
+     #   if [ -f "$PRIVKEY_PATH" ] && [ ! -f "$PUBKEY_PATH" ]; then
+     #           rm "$PRIVKEY_PATH"
+     #   elif [ ! -f "$PRIVKEY_PATH" ] && [ -f "$PUBKEY_PATH" ]; then
+     #           rm "$PUBKEY_PATH"
+     #   fi
+}
+
+trap clean_up SIGINT
+UNARCHIVE=false
+USER=$(whoami)
+DOMAIN_NAME=signavio.com
+CONF_DIR="${HOME}/.lassoer"
+PRIVKEY_PATH="${CONF_DIR}/${USER}@${DOMAIN_NAME}_age.priv"
+PUBKEY_PATH="${CONF_DIR}/${USER}@${DOMAIN_NAME}_age.pub"
+while getopts "c:x?h?" OPTION; do
+        case $OPTION in
+                c)
+                        CONF_DIR="${OPTARG}"
+                        PRIVKEY_PATH="${CONF_DIR}/${USER}@${DOMAIN_NAME}_age.priv"
+                        PUBKEY_PATH="${CONF_DIR}/${USER}@${DOMAIN_NAME}_age.pub"
+                        ;;
+                h|\?)
+                        usage
+                        exit 0
+                        ;;
+                x)
+                        UNARCHIVE=true
+                        ;;
+        esac
+done
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
+
+if  [ "$#" -lt 1 ]; then
+        echo -n "Error: Please provide the path to a folder "
+        echo -e "or file that should be archived or unarchived\n"
+        usage
+        exit 1
+fi
+if $UNARCHIVE ; then
+        unarchive "$@"
+else
+        archive "$@"
+fi
