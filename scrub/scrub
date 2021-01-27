@@ -1,10 +1,11 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i Rscript -p R rPackages.optparse rPackages.tidyverse rPackages.janitor icu
+#!/usr/bin/env Rscript
 
-suppressPackageStartupMessages(require(tidyverse))
-suppressPackageStartupMessages(require(readxl))
+suppressPackageStartupMessages(require(glue))
 suppressPackageStartupMessages(require(optparse))
+suppressPackageStartupMessages(require(readr))
+suppressPackageStartupMessages(require(readxl))
 suppressPackageStartupMessages(require(sqltypes))
+suppressPackageStartupMessages(require(stringr))
 options(scipen=999)
 
 usage <- 'scrub [options] file\n
