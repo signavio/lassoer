@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+echo "1. Test that we can parse a pipe delimited file"
+IN="invoicing-pipe-delimited.csv"
+OUT="scrubbed_invoicing-pipe-delimited.csv"
+REF="reference_invoicing-pipe-delimited.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "2. Test that we can parse a tab delimited file"
+IN="invoicing-tab-delimited.tsv"
+OUT="scrubbed_invoicing-tab-delimited.csv"
+REF="reference_invoicing-tab-delimited.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "3. Test that we can parse a binary excel file"
+IN="invoicing.xls"
+OUT="scrubbed_invoicing.csv"
+REF="reference_invoicing.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "4. Test that we can parse an .xml excel file"
+IN="invoicing.xlsx"
+OUT="scrubbed_invoicing.csv"
+REF="reference_invoicing.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "5. Test that we can parse an openoffice excel file"
+IN="invoicing-openoffice-format.xlsx"
+OUT="scrubbed_invoicing.csv"
+REF="reference_invoicing.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "6. Test that we can parse a comma delimited file which contains a trailing backslash in the first field"
+IN="invoicing-trailing-backslash.csv"
+OUT="scrubbed_invoicing-trailing-backslash.csv"
+REF="reference_invoicing-trailing-backslash.csv"
+../scrub "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi

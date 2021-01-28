@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 
+suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(glue))
 suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(readr))
@@ -41,8 +42,8 @@ read_delim_file <- function(file, options) {
     write(glue::glue('With schema from file `{options$schema_file}`'), stderr())
     sink(stderr());print(as.col_spec(col_types));sink();
   }
-  read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,
-             guess_max=1e6,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,
+  read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,escape_backslash=FALSE,
+             guess_max=1e6,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,skip_empty_rows=TRUE,
              quote=options$quote,col_types=as.col_spec(col_types))
 }
 read_excel_file <- function(file, options) {
@@ -64,6 +65,10 @@ read_excel_file <- function(file, options) {
 }
 scrub <- function(df) {
    df %>%
+      # Remove trailing backslashes to play nicely with csv parsers
+      mutate_if(is.character, ~ gsub('(\\x{005c}+)$', '', ., perl=T)) %>%
+      # Whitespace all control characters to play nicely with csv parsers
+      mutate_if(is.character, ~ gsub('[[:cntrl:]]', ' ', ., perl=T)) %>%
       # Remove dirty, misbehaving rows
       {
          if (length(problems(df)$row) > 0)
@@ -73,11 +78,8 @@ scrub <- function(df) {
       # Remove duplicates
       distinct %>%
       # Prettify column names
-      janitor::clean_names() %>%
-      # Remove trailing backslashes to play nicely with csv parsers
-      mutate_if(is.character, ~ gsub('(\\x{005c}+)$', '', ., perl=T)) %>%
-      # Whitespace all control characters to play nicely with csv parsers
-      mutate_if(is.character, ~ gsub('[[:cntrl:]]', ' ', ., perl=T))
+      janitor::clean_names()
+
 }
 is_excel_file <- function(file) {
   mime_type <- system2("file", c("--mime-type", shQuote(file)), stdout=TRUE)
@@ -104,7 +106,6 @@ if (is_excel_file(parsed$args[1])) {
    }
    df <- scrub(df)
 } else {
-   readLines(parsed$args[1],n=1)
    parsed$options$delimiter <- get_delimiter(readLines(parsed$args[1],n=1))
    df <- read_delim_file(parsed$args[1], parsed$options)
    df <- scrub(df)
