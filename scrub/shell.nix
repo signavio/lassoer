@@ -3,7 +3,7 @@
   { } }:
 
 let
-  sqltypes = (pkgs.rWrapper.override {
+  rEnv = (pkgs.rWrapper.override {
     packages = with pkgs.rPackages;
       let
         sqltypes = buildRPackage {
@@ -11,7 +11,6 @@ let
           src = ../sqltypes;
           propagatedBuildInputs = [ stringr readr ];
         };
-      in [ sqltypes readxl optparse ];
+      in [ sqltypes dplyr readxl optparse janitor glue readr stringr ];
   });
-  rEnv = with pkgs.rPackages; [ optparse readxl janitor glue readr stringr ];
-in pkgs.mkShell { buildInputs = [ pkgs.icu sqltypes ] ++ rEnv; }
+in pkgs.mkShell { buildInputs = [ pkgs.icu rEnv ]; }
