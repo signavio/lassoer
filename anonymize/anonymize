@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 const _ = require('lodash')
 const crypto = require('crypto')
 const csv = require('csv')
@@ -12,19 +11,20 @@ Usage:
 
 Options:
   -p --plan       Schema file specifying which columns to anonymize and how
-  -d --delimiter <delim>  Delimiter to use for parsing STDIN [default: '\t']
+  -d --delimiter <delim>  Delimiter to use for parsing STDIN [default: '\\t']
   -s --shuffle	  Shuffle (randomize) the order of outputted columns
   -h --help       Show this screen
   -k --key <key>  Key to use when deanonymizing the results [default: /dev/urandom]
   --version       Show version
-`, { optionsFirst: true, smartOptions: true, version: "0.1.0" })
+`, { optionsFirst: true, smartOptions: true, version: "0.2.0" })
 
 const parsePlan = (file) => {
   const data = fs.readFileSync(file, 'utf8')
-  // The plan file is three column wide .csv file whose first column is the original
+  // The plan file is a four column wide .csv file whose first column is the original
   // column name. The second column is the new column name that should be used in
-  // the output file. The last column specifies the faker function to use to 
-  // anonymize the values in the columns of the input file
+  // the output file. The third column specifies the faker function to use to 
+  // anonymize the values in the columns of the input file. and the last
+  // column specifies under which condition to anonymize the column
   return _.map(_.initial(data.split('\n')), (row) => {
 	  const inputColumnName = row.split(',')[0]
 	  const outputColumnName = row.split(',')[1]
