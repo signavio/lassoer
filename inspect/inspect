@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
-suppressPackageStartupMessages(require(tidyverse))
 suppressPackageStartupMessages(require(optparse))
+suppressPackageStartupMessages(require(readr))
 suppressPackageStartupMessages(require(readxl))
 suppressPackageStartupMessages(require(sqltypes))
+suppressPackageStartupMessages(require(stringr))
 options(scipen=999)
 
 usage <- 'inspect [options] file
