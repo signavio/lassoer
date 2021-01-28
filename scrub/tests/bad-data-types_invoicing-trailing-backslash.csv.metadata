@@ -1,0 +1,10 @@
+table_name|column_name|data_type
+reference_invoicing-trailing-backslash|comment|NUMERIC
+reference_invoicing-trailing-backslash|client_number|DECIMAL(38,20)
+reference_invoicing-trailing-backslash|timestamp|VARCHAR
+reference_invoicing-trailing-backslash|tx_number|VARCHAR
+reference_invoicing-trailing-backslash|step|DECIMAL
+reference_invoicing-trailing-backslash|invoice_status|DECIMAL(38,20)
+reference_invoicing-trailing-backslash|country|VARCHAR
+reference_invoicing-trailing-backslash|invoice_type|BOOLEAN
+reference_invoicing-trailing-backslash|company|DECIMAL(38,20)

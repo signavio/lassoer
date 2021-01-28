@@ -65,3 +65,62 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
+
+echo "7. Test that using option -f (schema file) works"
+IN="invoicing-trailing-backslash.csv"
+SCHEMA="invoicing-trailing-backslash.csv.metadata"
+OUT="scrubbed_invoicing-trailing-backslash.csv"
+REF="reference_invoicing-trailing-backslash.csv"
+../scrub -f "$SCHEMA" "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "8. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
+IN="invoicing-trailing-backslash.csv"
+SCHEMA="bad-data-types_invoicing-trailing-backslash.csv.metadata"
+OUT="scrubbed_bad-data-types_invoicing-trailing-backslash.csv"
+REF="reference_bad-data-types_invoicing-trailing-backslash.csv"
+../scrub -f "$SCHEMA" "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "9. Test that using option -n (NA values) with a single NA value works"
+IN="invoicing-with-na-value.csv"
+OUT="scrubbed_invoicing-with-na-value.csv"
+REF="reference_invoicing-with-na-value.csv"
+../scrub -n "NA" "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "10. Test that using option -n (NA values) with a multiple NA values works"
+IN="invoicing-with-many-na-values.csv"
+OUT="scrubbed_invoicing-with-many-na-values.csv"
+REF="reference_invoicing-with-many-na-values.csv"
+../scrub -n "NA;0000-00-00T00:00:00Z" "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+echo "11. Test that using option -q (quote) in combination with option -e (escape backslashes) works"
+IN="invoicing-with-single-quotes.csv"
+OUT="scrubbed_invoicing-with-single-quotes.csv"
+REF="reference_invoicing-with-single-quotes.csv"
+../scrub -q "'" -e "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+# clean up
+rm scrubbed_*

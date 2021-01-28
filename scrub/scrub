@@ -12,12 +12,14 @@ options(scipen=999)
 usage <- 'scrub [options] file\n
 Clean-up .csv or .xls file and output result as .tsv to STDOUT'
 parser <- OptionParser(usage=usage)
+parser <- add_option(parser, c("-e", "--escape-backslash"),action="store_true",default=FALSE,
+                     help="Does the file use backslashes to escape special characters? [default: %default]")
 parser <- add_option(parser, c("-n", "--na-values"),default='',
-                     help="Specify values considered to be NA")
+                     help="Specify values considered to be NA (use a semicolon to seperate multiple values)")
 parser <- add_option(parser, c("-f", "--schema-file"),default='',
                      help="Path to .csv schema file")
 parser <- add_option(parser, c("-q", "--quote"),default='"',
-                     help="Specify the character used to quote strings")
+                     help="Specify the character used to quote strings [default: double-quotes]")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
 prescrub <- function(file) {
@@ -31,7 +33,7 @@ prescrub <- function(file) {
 read_delim_file <- function(file, options) {
   col_types <- c()
   if (options$schema_file != '') {
-    schema <- read_csv(options$schema_file,col_names=TRUE,col_types=cols())
+    schema <- read_delim(options$schema_file,col_names=TRUE,col_types=cols(),delim='|')
     col_names <- c()
     data_types <- c()
     for (idx in 1:(nrow(schema)-1)) {
@@ -40,9 +42,8 @@ read_delim_file <- function(file, options) {
     }
     col_types <- setNames(data_types,col_names)
     write(glue::glue('With schema from file `{options$schema_file}`'), stderr())
-    sink(stderr());print(as.col_spec(col_types));sink();
   }
-  read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,escape_backslash=FALSE,
+  read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,escape_backslash=options$escape_backslash,
              guess_max=1e6,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,skip_empty_rows=TRUE,
              quote=options$quote,col_types=as.col_spec(col_types))
 }
@@ -98,6 +99,7 @@ get_delimiter <- function(head) {
 }
 
 write(glue::glue('\nScrubbing {parsed$args[1]}...'), stderr())
+parsed$options$na_values <- str_split(parsed$options$na_values, ';')[[1]]
 if (is_excel_file(parsed$args[1])) {
    df <- read_excel(parsed$args[1], na=parsed$options$na_values, col_names=TRUE,
                     trim_ws=TRUE, guess_max=1e6)
