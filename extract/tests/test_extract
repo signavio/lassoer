@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Perform setup
+touch .env
+
+echo "1. Test that we can extract a table from a sqlite database to a .tsv file"
+DRIVER_CLASS="jdbc:sqlite:sqlite.db"
+CLASS_PATH=".:sqlite-jdbc-3.32.3.2.jar"
+QUERY="SELECT * FROM scrubbed_invoicing"
+OUT="scrubbed-invoicing.tsv"
+REF="reference_scrubbed-invoicing.tsv"
+echo "$QUERY" | java -cp "$CLASS_PATH" ../extract.java -r "$DRIVER_CLASS" | tail -n+3 > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+# Perform clean up
+rm scrubbed-invoicing.tsv
