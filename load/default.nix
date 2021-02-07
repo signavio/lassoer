@@ -9,8 +9,6 @@ pkgs.python38Packages.buildPythonApplication {
   buildInputs = [ pkgs.sqlite ];
   propagatedBuildInputs = with pkgs.python38Packages; [
     boto3
-    joblib
-    multiprocess
     pyarrow
     python-dotenv
     sqlalchemy

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from botocore.config import Config
 from dotenv import dotenv_values
-from joblib import Parallel, delayed
 from optparse import OptionParser
 from os.path import basename, splitext
 from pathlib import Path
@@ -10,17 +9,16 @@ from pyarrow import parquet
 from shlex import quote
 from sqlalchemy import create_engine, text
 from subprocess import Popen, PIPE
-import boto3, csv, re, os, json, io, sys, multiprocessing, sqlite3
+import boto3, csv, re, os, json, io, sys, sqlite3
 import pyarrow as pa
 
-num_cores = multiprocessing.cpu_count()
 parser = OptionParser(
-    usage="%prog [options] target file...",
-    description="Load CSV files into a target sql database",
+    usage="%prog [options] target file",
+    description="Load a CSV file into a target sql database",
     version="%prog v0.3.0",
-    epilog="Load expects to find a .csv.metadata file for each input file "  +
+    epilog="Load expects to find a .csv.metadata file for the input file "  +
     "describing the schema of the .csv file in SQL DDL format. This file " +
-    "can be generated using the `inspect` command from lassoer"
+    "can be generated using the `inspect` command in this repo"
 )
 parser.add_option("-d", "--drop-if-exists", dest="drop", action="store_true",
                   help="Drop existing database schema/tables before creating new")
@@ -212,12 +210,13 @@ def run():
         parser.print_help()
         sys.exit(1)
     target = args.pop(0)
+    csv_file = args.pop(0)
     if target.startswith("postgresql"):
-        Parallel(n_jobs=num_cores)(delayed(load_into_postgresql)(env,options,target,i) for i in args)
+        load_into_postgresql(env, options, target, csv_file)
     elif target.startswith("athena"):
-        Parallel(n_jobs=num_cores)(delayed(load_into_athena)(env,options,target,i) for i in args)
+        load_into_athena(env, options, target, csv_file)
     elif target.startswith("sqlite"):
-        Parallel(n_jobs=num_cores)(delayed(load_into_sqlite)(env,options,target,i) for i in args)
+        load_into_sqlite(env, options, target, csv_file)
     else:
         print(f"The database of type `{options.db_target.split('/')[:-1]}` is not supported")
 
