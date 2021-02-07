@@ -207,15 +207,19 @@ def load_into_athena(env, path_to_csv_file):
     print(f'"{env["ATHENA_NAME"]}"."{table_name}" created and populated successfully')
     print(json.dumps(response,indent=2))
 
-if len(args) != 2:
-    parser.print_help()
-    sys.exit(1)
-target = args.pop(0)
-if target.startswith("postgresql"):
-    Parallel(n_jobs=num_cores)(delayed(load_into_postgresql)(env,options,target,i) for i in args)
-elif target.startswith("athena"):
-    Parallel(n_jobs=num_cores)(delayed(load_into_athena)(env,options,target,i) for i in args)
-elif target.startswith("sqlite"):
-    Parallel(n_jobs=num_cores)(delayed(load_into_sqlite)(env,options,target,i) for i in args)
-else:
-    print(f"The database of type `{options.db_target.split('/')[:-1]}` is not supported")
+def run():
+    if len(args) != 2:
+        parser.print_help()
+        sys.exit(1)
+    target = args.pop(0)
+    if target.startswith("postgresql"):
+        Parallel(n_jobs=num_cores)(delayed(load_into_postgresql)(env,options,target,i) for i in args)
+    elif target.startswith("athena"):
+        Parallel(n_jobs=num_cores)(delayed(load_into_athena)(env,options,target,i) for i in args)
+    elif target.startswith("sqlite"):
+        Parallel(n_jobs=num_cores)(delayed(load_into_sqlite)(env,options,target,i) for i in args)
+    else:
+        print(f"The database of type `{options.db_target.split('/')[:-1]}` is not supported")
+
+if __name__ == "__main__":
+    run()
