@@ -5,7 +5,7 @@ rm -rf ~/.lassoer
 
 echo -n "1. Test that nothing gets written to .lassoer on incorrectly "
 echo -e "entered password during the first age-keygen\n" 
-archive -c .lassoer testdir
+archive -c .lassoer tests/testdir
 if [ ! -f '.lassoer/sd@signavio.com_age.priv' ] && [ ! -f '.lassoer/sd@signavio.com_age.pub' ]; then
     echo -e "SUCCESS ✔: nothing gets written to .lassoer\n\n"
 else
@@ -14,7 +14,7 @@ fi
 
 echo -n "2. Test that nothing gets written to .lassoer on incorrectly entered "
 echo "password after being prompted to save password in password manager" 
-archive -c .lassoer testdir
+archive -c .lassoer tests/testdir
 if [ ! -f '.lassoer/sd@signavio.com_age.priv' ] && [ ! -f '.lassoer/sd@signavio.com_age.pub' ]; then
     echo -e "SUCCESS ✔: nothing gets written to .lassoer\n\n"
 else
@@ -22,45 +22,45 @@ else
 fi
 
 echo "3. Test that archiving (compress then encrypt) works"
-archive -c .lassoer testdir
-if [ -f 'testdir.tar.gz.age' ]; then
-    echo -e "SUCCESS ✔: testdir archived to testdir.tar.gz.age\n\n"
+archive -c .lassoer tests/testdir
+if [ -f 'tests/testdir.tar.gz.age' ]; then
+    echo -e "SUCCESS ✔: tests/testdir archived to tests/testdir.tar.gz.age\n\n"
 else
     echo -e "FAIL ✘: \n\n"
 fi
 
 echo "4. Test that archiving also deletes input file/folder on user's request"
-cp -r testdir testdir.bak
-archive -c .lassoer testdir
-if [ ! -d 'testdir' ]; then
-    echo -e "SUCCESS ✔: input folder testdir deleted as per user's request\n\n"
-    mv testdir.bak testdir
+cp -r tests/testdir tests/testdir.bak
+archive -c .lassoer tests/testdir
+if [ ! -d 'tests/testdir' ]; then
+    echo -e "SUCCESS ✔: input folder tests/testdir deleted as per user's request\n\n"
+    mv tests/testdir.bak tests/testdir
 else
     echo -e "FAIL ✘: \n\n"
 fi
 
 echo "5. Test that archiving does not delete input file/folder on user's request"
-archive -c .lassoer testdir
-if [ -d 'testdir' ]; then
-    echo -e "SUCCESS ✔: input folder testdir not deleted as per user's request\n\n"
+archive -c .lassoer tests/testdir
+if [ -d 'tests/testdir' ]; then
+    echo -e "SUCCESS ✔: input folder tests/testdir not deleted as per user's request\n\n"
 else
     echo -e "FAIL ✘: \n\n"
 fi
 
 echo "6. Test that unarchiving (uncompress and decrypt) works"
-if [ -d 'testdir' ]; then
-    rm -rf testdir
+if [ -d 'tests/testdir' ]; then
+    rm -rf tests/testdir
 fi
-archive -c .lassoer -x testdir.tar.gz.age
-if [ -d 'testdir' ]; then
-    echo -e "SUCCESS ✔: unarchived testdir.tar.gz.age to testdir\n\n"
+archive -c .lassoer -x tests/testdir.tar.gz.age
+if [ -d 'tests/testdir' ]; then
+    echo -e "SUCCESS ✔: unarchived tests/testdir.tar.gz.age to tests/testdir\n\n"
 else
     echo -e "FAIL ✘: \n\n"
 fi
 
 echo "7. Test that nothing gets written to .lassoer on SIGINT (Control+C)"
 rm -rf .lassoer
-archive -c .lassoer testdir
+archive -c .lassoer tests/testdir
 if [ ! -f '.lassoer/sd@signavio.com_age.priv' ] && [ ! -f '.lassoer/sd@signavio.com_age.pub' ]; then
     echo -e "SUCCESS ✔: nothing gets written to .lassoer\n\n"
 else
