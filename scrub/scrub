@@ -24,7 +24,8 @@ parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
 prescrub <- function(file) {
   # Convert input into valid UTF-8 and ignore invalid character sequences
-  to_utf8 <- 'uconv --from-callback skip --to-code UTF-8' # Remove all carriage return characters (usually used in dos style line endings)
+  to_utf8 <- 'uconv --from-callback skip --to-code UTF-8'
+  # Remove all carriage return characters (usually used in dos style line endings)
   tr <- 'tr -d "\\r"'
   # Replace control chars (except '\t' and '\n') with single space
   sub_cntrl_chars <- 'perl -pe "s/[\\N{U+00}-\\N{U+08}\\N{U+0B}-\\N{U+1F}\\N{U+7F}]/ /g"'
