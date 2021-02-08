@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 echo "1. Test that inspect guesses at the .csv file's schema properly"
-IN="scrubbed_invoicing.tsv"
-OUT="scrubbed_invoicing.tsv.metadata"
-REF="reference_invoicing.tsv.metadata"
-../inspect "$IN" > "$OUT"
+IN="tests/scrubbed_invoicing.tsv"
+OUT="tests/scrubbed_invoicing.tsv.metadata"
+REF="tests/reference_invoicing.tsv.metadata"
+inspect "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
