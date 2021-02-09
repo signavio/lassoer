@@ -69,3 +69,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Java sql drivers
+extract/drivers/
+
+# result directories built by nix
+**/result*

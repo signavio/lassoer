@@ -17,7 +17,7 @@ in pkgs.stdenv.mkDerivation {
   name = "inspect";
   version = "0.3.0";
   src = ./.;
-  buildInputs = [ pkgs.file rEnv ];
+  buildInputs = [ pkgs.file pkgs.glibcLocales rEnv ];
   installPhase = ''
     mkdir -p $out/bin
     cp inspect $out/bin
