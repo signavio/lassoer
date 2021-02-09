@@ -41,7 +41,8 @@ inspect <- function(file, options) {
   } else {
     delimiter <- get_delimiter(readLines(file,n=1))
     col_types <- spec_with_ref_fmt(
-      read_delim(file=file,delim=delimiter,guess_max=1e6,locale=locale,col_types=cols()),
+      read_delim(file=file,delim=delimiter,guess_max=1e5,
+                 locale=locale,trim_ws=TRUE,col_types=cols()),
       options
     )
   }
