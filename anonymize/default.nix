@@ -18,4 +18,9 @@ in pkgs.stdenv.mkDerivation {
 
     cp anonymize $out/bin/
   '';
+  doInstallCheck = true;
+  installCheckPhase = ''
+    export PATH=$out/bin:$PATH
+    ${pkgs.bash}/bin/bash tests/test_anonymize
+  '';
 }

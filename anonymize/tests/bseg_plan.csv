@@ -1,0 +1,18 @@
+input_column_name,output_column_name,faker_function,anonymize_if
+BUKRS,bukrs,finance.account(4),true
+BELNR,belnr,finance.account(10),true
+GJAHR,gjahr,,
+BUZEI,buzei,finance.account(1),true
+AUGDT,augdt,,
+AUGCP,augcp,,
+AUGBL,augbl,finance.account(10),true
+BSCHL,bschl,random.number(100),true
+KOART,koart,random.alphaNumeric,true
+UMSKZ,umskz,random.alphaNumeric,true
+SHKZG,shkzg,finance.account(4),true
+GSBER,gsber,finance.amount,true
+WRBTR,wrbtr,finance.account(15),true
+ERZT,erzt,,
+ZUONR,zuonr,finance.account(8),true
+BGZT,bgzt,,
+ZFBDT,zfbdt,finance.amount,record[i] !== "0.000"

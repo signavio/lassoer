@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+echo "1. Test that anonymized input file is equal to reference file"
+IN="tests/bseg_original.tsv"
+OUT="tests/bseg_anonymized.tsv"
+PLAN="tests/bseg_plan.csv"
+REF="tests/reference_bseg_anonymized.tsv"
+anonymize -k testKey -p "$PLAN" < "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+# Cleanup
+rm tests/bseg_anonymized.tsv

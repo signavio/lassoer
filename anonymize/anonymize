@@ -11,12 +11,12 @@ Usage:
 
 Options:
   -p --plan       Schema file specifying which columns to anonymize and how
-  -d --delimiter <delim>  Delimiter to use for parsing STDIN [default: '\\t']
+  -d --delimiter <delim>  Delimiter to use for parsing STDIN [default: '\t']
   -s --shuffle	  Shuffle (randomize) the order of outputted columns
   -h --help       Show this screen
-  -k --key <key>  Key to use when deanonymizing the results [default: /dev/urandom]
+  -k --key <key>  Key to use when deanonymizing the results
   --version       Show version
-`, { optionsFirst: true, smartOptions: true, version: "0.2.0" })
+`,	{ optionsFirst: true, smartOptions: true, version: "0.2.0" })
 
 const parsePlan = (file) => {
   const data = fs.readFileSync(file, 'utf8')
@@ -34,7 +34,7 @@ const parsePlan = (file) => {
   })
 }
 const deanonymizingKey = args['--key'] || crypto.randomBytes(32)
-const delimiter = args['--delimiter'] || '\t'
+const delimiter = args['--delimiter']
 const anonymizationPlan = parsePlan(args['--plan'])
 const fakerSeedNumber = (key, value) => {
   const hmacUsingDeanonymizingKeyAndRecordValue = crypto
