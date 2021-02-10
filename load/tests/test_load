@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 echo "1. Test that we can load a .tsv file into a sqlite database"
-IN="scrubbed_invoicing.tsv"
-OUT="sqlite.db"
-REF="reference_sqlite.db"
-../load "sqlite://${OUT}" "$IN"
+IN="tests/scrubbed_invoicing.tsv"
+OUT="tests/sqlite.db"
+REF="tests/reference_sqlite.db"
+load "sqlite://${OUT}" "$IN"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
@@ -12,4 +12,4 @@ else
 fi
 
 # perform clean up
-rm sqlite.db
+rm tests/sqlite.db
