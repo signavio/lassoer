@@ -23,9 +23,9 @@ in pkgs.stdenv.mkDerivation {
     cp scrub $out/bin
     cp ${pkgs.icu.dev}/bin/uconv $out/bin
   '';
+  doInstallCheck = true;
   installCheckPhase = ''
     PATH=$PATH:$out/bin
     ${pkgs.bash}/bin/bash tests/test_scrub
   '';
-  doInstallCheck = true;
 }
