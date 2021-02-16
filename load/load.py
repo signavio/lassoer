@@ -16,7 +16,7 @@ parser = OptionParser(
     usage="%prog [options] target file",
     description="Load a CSV file into a target sql database",
     version="%prog v0.3.0",
-    epilog="Load expects to find a .csv.metadata file for the input file "  +
+    epilog="Load expects to find a .metadata file for the input file "  +
     "describing the schema of the .csv file in SQL DDL format. This file " +
     "can be generated using the `inspect` command in this repo"
 )

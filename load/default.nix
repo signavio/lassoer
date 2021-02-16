@@ -9,6 +9,7 @@ pkgs.python38Packages.buildPythonApplication {
   buildInputs = [ pkgs.sqlite ];
   propagatedBuildInputs = with pkgs.python38Packages; [
     boto3
+    psycopg2
     pyarrow
     python-dotenv
     sqlalchemy
