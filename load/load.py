@@ -55,10 +55,9 @@ def load_into_sqlite(env, options, target, csv_file):
         if len(stderr) > 0:
             print(stderr.decode("utf-8")[:-1])
 
-def load_into_postgresql(env, options, csv_file):
+def load_into_postgresql(env, options, target, csv_file):
     create_stmt = create_stmt_ddl_from(f"{csv_file}.metadata")
-    db_uri = f'postgres://{env["PSQL_USERNAME"]}:{env["PSQL_PASSWORD"]}' +\
-    f'@{env["PSQL_HOST"]}/{env["PSQL_DB"]}'
+    db_uri = target
     (table_name, _) = splitext(basename(csv_file))
     engine = create_engine(db_uri)
     conn = engine.connect()
@@ -214,7 +213,7 @@ def run():
     if target.startswith("postgresql"):
         load_into_postgresql(env, options, target, csv_file)
     elif target.startswith("athena"):
-        load_into_athena(env, options, target, csv_file)
+        load_into_athena(env, csv_file)
     elif target.startswith("sqlite"):
         load_into_sqlite(env, options, target, csv_file)
     else:
