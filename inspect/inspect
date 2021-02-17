@@ -48,7 +48,7 @@ inspect <- function(file, options) {
   }
   column_types <- c()
   for (idx in 1:length(col_types$cols)) {
-    column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]]))
+    column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]], locale=locale))
   }
   schema <- data.frame(table_name=str_extract(basename(file), "[^\\.]+"),
                        column_name=names(col_types$cols),

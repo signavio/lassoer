@@ -19,7 +19,7 @@ require(stringr)
 #' }
 #' @keywords misc
 #' @export
-as.sql_ddl <- function(col_spec) {
+as.sql_ddl <- function(col_spec, locale=default_locale()) {
   type <- class(col_spec)[1]
   format <- col_spec$format
   switch(
@@ -30,7 +30,9 @@ as.sql_ddl <- function(col_spec) {
     "collector_double" = "DECIMAL(38,20)",
     "collector_integer" = "INTEGER",
     "collector_logical" = "BOOLEAN",
-    "collector_number" = "NUMERIC(38,20)",
+    "collector_number" = glue::glue("NUMERIC('8{group}999{dec}99')",
+                                    group = locale$grouping_mark,
+                                    dec = locale$decimal_mark),
     "collector_time" = glue::glue("TIME('{to_reference(format)}')",na=''),
   )
 }

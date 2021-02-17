@@ -12,10 +12,10 @@ else
 fi
 
 echo "2. Test that option -n works correctly"
-IN="tests/bseg-anonymized.tsv"
+IN="tests/bseg-anonymized-option-n.tsv"
 OUT="tests/bseg-option-n.tsv.metadata"
 REF="tests/reference_bseg-option-n.tsv.metadata"
-inspect -n '8.999,99' "$IN" > "$OUT"
+inspect -n "8'999.99" "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
@@ -26,18 +26,6 @@ echo "3. Test that option -d works correctly"
 IN="tests/bseg-anonymized.tsv"
 OUT="tests/bseg-option-d.tsv.metadata"
 REF="tests/reference_bseg-option-d.tsv.metadata"
-inspect -d '01-02-2006' "$IN" > "$OUT"
-if cmp "$OUT" "$REF"; then
-    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
-else
-    echo -e "FAIL ✘: \n\n"
-fi
-
-
-echo "3. Test that option -t works correctly"
-IN="tests/bseg-anonymized.tsv"
-OUT="tests/bseg-option-t.tsv.metadata"
-REF="tests/reference_bseg-option-t.tsv.metadata"
 inspect -d '01-02-2006' "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"

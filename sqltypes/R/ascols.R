@@ -1,6 +1,6 @@
 require(readr)
 require(stringr)
-#' Help page title
+#' Convert between col_spec and SQL DDL
 #'
 #' A couple of lines of description about the function(s).
 #' If you want to include code, use \code{my_code()}.
