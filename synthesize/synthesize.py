@@ -4,7 +4,7 @@ from numpy import random as r
 from operator import truediv, mul, add, sub
 from optparse import OptionParser
 import pandas as pd
-import uuid, sys
+import json, uuid, sys
 
 parser = OptionParser(
     usage="%prog [options] events attributes variants",
