@@ -22,6 +22,11 @@ parser.add_option("-i", "--start-new-in", dest="start_new_in", help="Start new i
                   default=0.1)
 parser.add_option("-n", "--noise", dest="noise", help="Noise", action="store_true")
 (options, args) = parser.parse_args()
+event_log = []
+attribute_log = []
+case_attrs = {}
+variant = {}
+start_date = datetime.today()
 
 def add_event(meta, event, attr_def):
     """Add event to event log."""
@@ -65,11 +70,11 @@ def create_logs(options, events, attributes, variants):
     global variant
     check_user_input(options, variants)
 
-    start_date = options['start']
-    first_stamp = options['start']
-    for case in range(options['number_of_cases']):
+    start_date = options.start
+    first_stamp = options.start
+    for case in range(options.number_of_cases):
         if case != 0:
-            first_stamp += timedelta(hours=options['start_new_in'])
+            first_stamp += timedelta(hours=options.start_new_in)
 
         random_case_id = create_case_id()
         case_attrs = create_attributes(random_case_id, attributes, first_stamp)
@@ -78,13 +83,13 @@ def create_logs(options, events, attributes, variants):
 
         for idx, event_name in enumerate(variant['sequence']):
             meta = {'idx': idx, 'case': random_case_id, 'first_stamp': first_stamp,
-                    'end': options['end'], 'noise': log_meta['noise']}
+                    'end': options.end, 'noise': options.noise}
 
             reached_end = add_event(meta,
                                     get_event_by_name(event_name, events),
                                     attributes)
 
-            if meta['noise'] == 'on':
+            if options.noise:
                 if chance(1):
                     break
 
@@ -95,8 +100,8 @@ def create_logs(options, events, attributes, variants):
             attribute_log.append(case_attrs)
 
     parse_timestamps(event_log)
-    if options['event_attributes']:
-        add_event_attrs(event_log, events)
+    #if options['event_attributes']:
+    #    add_event_attrs(event_log, events)
 
     for attribute in attributes:
         if attribute['type'] == 'check_overdue':
@@ -287,13 +292,9 @@ def add_event_attrs(event_log, event_def):
                             event['User Type'] = auto_rate
 
 
-def check_user_input(log_meta, variants):
+def check_user_input(options, variants):
     """Check user input before creating logs. Still a to-do."""
 
-    # Check log_meta
-    for meta in log_meta:
-        if not meta:
-            print("Meta missing.")
     # Check Event Definition
     # Check Variant Definition
     sum_variant_prob = 0
@@ -394,8 +395,8 @@ def run():
     with open(args.pop(0)) as attributes_fh:
         attributes = json.load(attributes_fh)
     with open(args.pop(0)) as variants_fh:
-        attributes = json.load(variants_fh)
-    event_log, attribute_log = create_logs(events, attributes, variants)
+        variants = json.load(variants_fh)
+    event_log, attribute_log = create_logs(options, events, attributes, variants)
     event_log.to_csv('eventlog.csv', encoding='utf-8', index=False)
     attribute_log.to_csv('attributes.csv', encoding='utf-8', index=False)
 
