@@ -11,22 +11,33 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "2. Test that option -n works correctly"
-IN="tests/bseg-anonymized-option-n.tsv"
-OUT="tests/bseg-option-n.tsv.metadata"
-REF="tests/reference_bseg-option-n.tsv.metadata"
-inspect -n "8'999.99" "$IN" > "$OUT"
+echo "2. Test option -u recognizes locale specific numeric columns"
+IN="tests/bseg-anonymized-with-options.tsv"
+OUT="tests/bseg-option-u.tsv.metadata"
+REF="tests/reference_bseg-option-u.tsv.metadata"
+inspect -u "8'999.99" "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "3. Test that option -d works correctly"
-IN="tests/bseg-anonymized.tsv"
+echo "3. Test option -d recognizes locale specific date columns"
+IN="tests/bseg-anonymized-with-options.tsv"
 OUT="tests/bseg-option-d.tsv.metadata"
 REF="tests/reference_bseg-option-d.tsv.metadata"
 inspect -d '01-02-2006' "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "4. Test option -n converts na values to an empty string"
+IN="tests/bseg-anonymized-with-options.tsv"
+OUT="tests/bseg-option-n.tsv.metadata"
+REF="tests/reference_bseg-option-n.tsv.metadata"
+inspect -d '01-02-2006' -n '00-00-0000' "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
