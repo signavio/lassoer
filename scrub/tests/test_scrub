@@ -65,10 +65,6 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
-echo 'OUT'
-head -n 11 $OUT | nl
-echo 'REF'
-head -n 11 $REF | nl
 
 echo "7. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
 IN="tests/invoicing-trailing-backslash.csv"

@@ -1,1 +1,1 @@
-comment	client_number	timestamp	tx_number	step	invoice_status	country	invoice_type	company
+comment	client_number	timestamp	tx_number	step	invoice_status	country	invoice_type	company	invoice_amount
