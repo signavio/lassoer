@@ -17,7 +17,7 @@ parser <- add_option(parser, c("-b", "--escape-backslash"),action="store_true",d
 parser <- add_option(parser, c("-n", "--na-values"),default='',
                      help="Specify values considered to be NA (use a semicolon to seperate multiple values)")
 parser <- add_option(parser, c("-f", "--schema-file"),default='',
-                     help="Path to .csv schema file")
+                     help="Path to the .metadata schema associated with file")
 parser <- add_option(parser, c("-q", "--quote"),default='"',
                      help="Specify the character used to quote strings [default: double-quotes]")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
@@ -33,21 +33,28 @@ prescrub <- function(file) {
 }
 read_delim_file <- function(file, options) {
   col_types <- c()
+  loc <- list()
   if (options$schema_file != '') {
     schema <- read_delim(options$schema_file,col_names=TRUE,col_types=cols(),delim='|')
     col_names <- c()
     data_types <- c()
-    for (idx in 1:(nrow(schema)-1)) {
+    for (idx in 1:(nrow(schema))) {
+      if (!is.na(str_match(schema[idx,]$data_type, "8([:punct:])999([:punct:])?9?9?")[1])) {
+         loc$grouping_mark <- str_match(schema[idx,]$data_type, "8([:punct:])999([:punct:])?9?9?")[2]
+         loc$decimal_mark <- str_match(schema[idx,]$data_type, "8([:punct:])999([:punct:])?9?9?")[3]
+      }
       col_names <- c(col_names, schema[idx,]$column_name)
       data_types <- c(data_types, list(as.cols(schema[idx,]$data_type)))
     }
     col_types <- setNames(data_types,col_names)
     write(glue::glue('With schema from file `{options$schema_file}`'), stderr())
   }
+  locale <- do.call(readr::locale, loc)
   read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=TRUE,escape_backslash=options$escape_backslash,
-             guess_max=1e6,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,skip_empty_rows=TRUE,
-             quote=options$quote,col_types=as.col_spec(col_types))
+             guess_max=1e5,escape_double=FALSE,trim_ws=TRUE,na=options$na_values,skip_empty_rows=TRUE,
+             quote=options$quote,col_types=as.col_spec(col_types),locale=locale)
 }
+
 read_excel_file <- function(file, options) {
   col_types <- c()
   if (options$schema_file != '') {

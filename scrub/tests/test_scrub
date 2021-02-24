@@ -54,18 +54,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "6. Test that we can parse a comma delimited file which contains a trailing backslash in the first field"
-IN="tests/invoicing-trailing-backslash.csv"
-OUT="tests/scrubbed_invoicing-trailing-backslash.csv"
-REF="tests/reference_invoicing-trailing-backslash.csv"
-scrub "$IN" > "$OUT"
-if cmp "$OUT" "$REF"; then
-    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
-else
-    echo -e "FAIL ✘: \n\n"
-fi
-
-echo "7. Test that using option -f (schema file) works"
+echo "6. Test that using option -f (schema file) works with file containing trailing backslash in first field"
 IN="tests/invoicing-trailing-backslash.csv"
 SCHEMA="tests/invoicing-trailing-backslash.csv.metadata"
 OUT="tests/scrubbed_invoicing-trailing-backslash.csv"
@@ -76,8 +65,12 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
+echo 'OUT'
+head -n 11 $OUT | nl
+echo 'REF'
+head -n 11 $REF | nl
 
-echo "8. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
+echo "7. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
 IN="tests/invoicing-trailing-backslash.csv"
 SCHEMA="tests/bad-data-types_invoicing-trailing-backslash.csv.metadata"
 OUT="tests/scrubbed_bad-data-types_invoicing-trailing-backslash.csv"
@@ -89,7 +82,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "9. Test that using option -n (NA values) with a single NA value works"
+echo "8. Test that using option -n (NA values) with a single NA value works"
 IN="tests/invoicing-with-na-value.csv"
 OUT="tests/scrubbed_invoicing-with-na-value.csv"
 REF="tests/reference_invoicing-with-na-value.csv"
@@ -100,7 +93,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "10. Test that using option -n (NA values) with a multiple NA values works"
+echo "9. Test that using option -n (NA values) with a multiple NA values works"
 IN="tests/invoicing-with-many-na-values.csv"
 OUT="tests/scrubbed_invoicing-with-many-na-values.csv"
 REF="tests/reference_invoicing-with-many-na-values.csv"
@@ -110,7 +103,7 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
-echo "11. Test that using option -q (quote) in combination with option -b (escape backslashes) works"
+echo "10. Test that using option -q (quote) in combination with option -b (escape backslashes) works"
 IN="tests/invoicing-with-single-quotes.csv"
 OUT="tests/scrubbed_invoicing-with-single-quotes.csv"
 REF="tests/reference_invoicing-with-single-quotes.csv"
@@ -122,4 +115,4 @@ else
 fi
 
 # clean up
-rm tests/scrubbed_*
+# rm tests/scrubbed_*

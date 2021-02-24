@@ -8,3 +8,4 @@ reference_invoicing-trailing-backslash|invoice_status|DECIMAL(38,20)
 reference_invoicing-trailing-backslash|country|VARCHAR
 reference_invoicing-trailing-backslash|invoice_type|VARCHAR
 reference_invoicing-trailing-backslash|company|DECIMAL(38,20)
+reference_invoicing-trailing-backslash|invoice_amount|NUMERIC('8.999,99')
