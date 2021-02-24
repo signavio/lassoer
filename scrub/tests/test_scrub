@@ -111,4 +111,4 @@ else
 fi
 
 # clean up
-# rm tests/scrubbed_*
+rm tests/scrubbed_*
