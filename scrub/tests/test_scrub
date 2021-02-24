@@ -110,11 +110,11 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
-echo "11. Test that using option -q (quote) in combination with option -e (escape backslashes) works"
+echo "11. Test that using option -q (quote) in combination with option -b (escape backslashes) works"
 IN="tests/invoicing-with-single-quotes.csv"
 OUT="tests/scrubbed_invoicing-with-single-quotes.csv"
 REF="tests/reference_invoicing-with-single-quotes.csv"
-scrub -q "'" -e "$IN" > "$OUT"
+scrub -q "'" -b "$IN" > "$OUT"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
