@@ -12,7 +12,7 @@ options(scipen=999)
 usage <- 'scrub [options] file\n
 Clean-up .csv or .xls file and output result as .tsv to STDOUT'
 parser <- OptionParser(usage=usage)
-parser <- add_option(parser, c("-e", "--escape-backslash"),action="store_true",default=FALSE,
+parser <- add_option(parser, c("-b", "--escape-backslash"),action="store_true",default=FALSE,
                      help="Does the file use backslashes to escape special characters? [default: %default]")
 parser <- add_option(parser, c("-n", "--na-values"),default='',
                      help="Specify values considered to be NA (use a semicolon to seperate multiple values)")
