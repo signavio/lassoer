@@ -76,14 +76,14 @@ def create_stmt_ddl_from(csv_metadata_file):
         reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
         if first_row["data_type"].startswith("DECIMAL"):
-            create_stmt = f'"{first_row["column_name"]}" {first_row["data_type"]},'   
+            create_stmt = f'"{first_row["column_name"].lower()}" {first_row["data_type"]},'
         else:
-            create_stmt = f'"{first_row["column_name"]}" {re.findall("[^(]+", first_row["data_type"])[0]},'
+            create_stmt = f'"{first_row["column_name"].lower()}" {re.findall("[^(]+", first_row["data_type"])[0]},'
         for row in reader:
             if row["data_type"].startswith("DECIMAL"):
-                create_stmt += f' "{row["column_name"]}" {row["data_type"]},'
+                create_stmt += f' "{row["column_name"].lower()}" {row["data_type"]},'
             else:
-                create_stmt += f' "{row["column_name"]}" {re.findall("[^(]+", row["data_type"])[0]},'
+                create_stmt += f' "{row["column_name"].lower()}" {re.findall("[^(]+", row["data_type"])[0]},'
         create_stmt = create_stmt[:-1] + ')'
     return create_stmt
     

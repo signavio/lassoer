@@ -1,4 +1,4 @@
-comment	client_number	timestamp	tx_number	step	invoice_status	country	invoice_type	company
+comment	client_number	timestamp	tx_number	step	invoice_status	country	invoice_type	COMPANY
 payment transaction at Doyle - Ortiz using card ending with ***3906 for XAF 745.98 in account ***73626153	651	Mon Nov 23 2020 23:17:02 GMT+0000 (Coordinated Universal Time)	4afda9d6-03ad-4a38-98f8-b9ba3767478c		99	SM	Money Market Account	2884
 withdrawal transaction at Denesik - Macejkovic using card ending with ***8098 for ISK 456.34 in account ***87110849	651	Tue Jun 30 2020 13:59:16 GMT+0000 (Coordinated Universal Time)	4afda9d6-03ad-4a38-98f8-b9ba3767478c	quantifying	99	SM	Money Market Account	2884
 deposit transaction at Parker - Stoltenberg using card ending with ***7602 for CLP 889.21 in account ***54152764	651	Tue Jun 30 2020 13:59:16 GMT+0000 (Coordinated Universal Time)	4afda9d6-03ad-4a38-98f8-b9ba3767478c	quantifying	99	SM	Money Market Account	2884
