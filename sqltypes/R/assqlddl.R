@@ -29,7 +29,12 @@ as.sql_ddl <- function(col_spec, locale=default_locale()) {
     "collector_datetime" = glue::glue("TIMESTAMP('{to_reference(format)}')",na=''),
     "collector_double" = "DECIMAL(38,20)",
     "collector_integer" = "INTEGER",
-    "collector_logical" = "BOOLEAN",
+    # Set collector_logical explicitly to VARCHAR and not BOOLEAN
+    # because read_delim()'s auto type detection incorrectly
+    # expects columns which contain many NA values
+    # interspersed with some real values
+    # to be of type BOOLEAN
+    "collector_logical" = "VARCHAR",
     "collector_number" = glue::glue("NUMERIC('8{group}999{dec}99')",
                                     group = locale$grouping_mark,
                                     dec = locale$decimal_mark),
