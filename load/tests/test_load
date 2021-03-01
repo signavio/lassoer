@@ -2,9 +2,10 @@
 
 echo "1. Test that we can load a .tsv file into a sqlite database"
 IN="tests/scrubbed_invoicing.tsv"
+METADATA="tests/scrubbed_invoicing.tsv.metadata"
 OUT="tests/sqlite.db"
 REF="tests/reference_sqlite.db"
-load -f tests/.env "$IN"
+load -f tests/.env "$IN" "$METADATA"
 if cmp "$OUT" "$REF"; then
     echo -e "SUCCESS ✔: $OUT == $REF \n\n"
 else
