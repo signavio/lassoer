@@ -13,14 +13,13 @@ import boto3, csv, re, os, json, io, sys, sqlite3
 import pyarrow as pa
 
 parser = OptionParser(
-    usage="%prog [options] file",
+    usage="%prog [options] file metadata",
     description="Load a CSV file into a target sql database",
     version="%prog v0.3.0",
-    epilog="Load expects to find a .metadata file for the input file "  +
-    "describing the schema of the .csv file in SQL DDL format. This file " +
-    "can be generated using the `inspect` command in this repo. " +
-    "The target sql database is sourced from $DATABASE_URL " +
-    "in the environment file"
+    epilog="Use the `load` utility to copy the contents of a tab-separated" +
+        " input file into a SQL Database table. `load` uses the metadata" +
+        " argument to generate the SQL `CREATE TABLE` that will be" +
+        " executed on the target SQL database"
 )
 parser.add_option("-d", "--drop-if-exists", dest="drop", action="store_true",
                   help="Drop existing database table before creating new")
@@ -32,7 +31,7 @@ parser.add_option("-s", "--db-schema", dest="db_schema", type="string",
 (options, args) = parser.parse_args()
 env = dotenv_values(options.environment_file)
 
-def load_into_sqlite(env, options, target, csv_file):
+def load_into_sqlite(env, options, target, csv_file, metadata_file):
         path_to_db_file = target[9:]
         table_name = basename(csv_file).split('.')[0]
         sanitized_table_name = re.sub(r"-|\s", '_', table_name)
@@ -40,7 +39,7 @@ def load_into_sqlite(env, options, target, csv_file):
             cur.execute(f'DROP TABLE IF EXISTS "{sanitized_table_name}"')
         con = sqlite3.connect(path_to_db_file)
         cur = con.cursor()
-        create_stmt = create_stmt_ddl_from(f"{csv_file}.metadata") 
+        create_stmt = create_stmt_ddl_from(metadata_file) 
         cur.execute(f'CREATE TABLE IF NOT EXISTS "{sanitized_table_name}" ({create_stmt};')
         # Do not use the con with csv.DictReader to load data from csv_file
         # into the db, since .import with sqlite3 works well enough
@@ -57,8 +56,8 @@ def load_into_sqlite(env, options, target, csv_file):
         if len(stderr) > 0:
             print(stderr.decode("utf-8")[:-1])
 
-def load_into_postgresql(env, options, target, csv_file):
-    create_stmt = create_stmt_ddl_from(f"{csv_file}.metadata")
+def load_into_postgresql(env, options, target, csv_file, metadata_file):
+    create_stmt = create_stmt_ddl_from(metadata_file)
     db_uri = target
     table_name = basename(csv_file).split('.')[0]
     engine = create_engine(db_uri)
@@ -70,9 +69,9 @@ def load_into_postgresql(env, options, target, csv_file):
     conn.execute(create_stmt)
     psql_copy(db_uri, options.db_schema, csv_file)
 
-def create_stmt_ddl_from(csv_metadata_file):
+def create_stmt_ddl_from(metadata_file):
     create_stmt = ""
-    with open(csv_metadata_file, newline='') as csvfile:
+    with open(metadata_file, newline='') as csvfile:
         reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
         if first_row["data_type"].startswith("DECIMAL"):
@@ -136,13 +135,13 @@ def create_pyarrow_schema(column_names, data_types):
             fields.append((str(n), pa.string()))
     return pa.schema(fields)
 
-def as_parquet(csv_file):
+def as_parquet(csv_file, metadata_file):
     
     result = io.BytesIO()
     csv_parse_options = csv.ParseOptions(delimiter="\t")
     schema_parse_options = csv.ParseOptions(delimiter="|")
     schema = csv.read_csv(
-        f"{csv_file}.metadata",
+        metadata_file,
         parse_options=schema_parse_options
     )
     pyarrow_schema = create_pyarrow_schema(schema["column_name"], schema["data_type"])
@@ -161,7 +160,7 @@ def as_parquet(csv_file):
     w.write_table(parquet_table) 
     return result
 
-def load_into_athena(env, path_to_csv_file):
+def load_into_athena(env, csv_file, metadata_file):
 
     aws_session = boto3.Session(
         region_name = env["AWS_REGION_NAME"],
@@ -170,14 +169,14 @@ def load_into_athena(env, path_to_csv_file):
     )
 
     table_name = basename(csv_file).split('.')[0]
-    parquet = as_parquet(path_to_csv_file)
+    parquet = as_parquet(csv_file)
     s3 = aws_session.resource('s3')
-    print(f'Copy from {path_to_csv_file}.parquet to s3://{env["BUCKET_NAME"]}/{table_name}/{basename(path_to_csv_file)}.parquet')
+    print(f'Copy from {csv_file}.parquet to s3://{env["BUCKET_NAME"]}/{table_name}/{basename(csv_file)}.parquet')
     s3.Object(
         env['BUCKET_NAME'],
-        f"{table_name}/{basename(path_to_csv_file)}.parquet"
+        f"{table_name}/{basename(csv_file)}.parquet"
     ).put(Body=parquet.getvalue())
-    create_stmt = create_stmt_ddl_from(f"{path_to_csv_file}.metadata")
+    create_stmt = create_stmt_ddl_from(metadata_file)
     client = aws_session.client('athena')
     create_stmt = re.sub("VARCHAR|TIME", "string", create_stmt) 
     query = f"CREATE EXTERNAL TABLE IF NOT EXISTS {table_name} (" +\
@@ -203,10 +202,11 @@ def load_into_athena(env, path_to_csv_file):
     print(json.dumps(response,indent=2))
 
 def run():
-    if len(args) != 1:
+    if len(args) != 2:
         parser.print_help()
         sys.exit(1)
     csv_file = args.pop(0)
+    metadata_file = args.pop(0)
     try:
         target = env["DATABASE_URL"]
     except KeyError:
@@ -216,11 +216,11 @@ def run():
         if options.db_schema is None:
             print("A Database schema must be provided using option -d")
             sys.exit(1)
-        load_into_postgresql(env, options, target, csv_file)
+        load_into_postgresql(env, options, target, csv_file, metadata_file)
     elif target.startswith("athena"):
-        load_into_athena(env, csv_file)
+        load_into_athena(env, csv_file, metadata_file)
     elif target.startswith("sqlite"):
-        load_into_sqlite(env, options, target, csv_file)
+        load_into_sqlite(env, options, target, csv_file, metadata_file)
     else:
         print(f"The database of type `{target.split('/')[:-1]}` is not supported")
 
