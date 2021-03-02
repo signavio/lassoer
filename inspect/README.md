@@ -1,8 +1,8 @@
 # Inspect
 
-Use this utility to inspect the metadata of a .csv file and guess at the column data types (strings, dates, numbers, etc.) 
+Use the `inspect` utility to guess at the metadata of a .csv file and try to determine column data types (strings, dates, numbers, etc.) 
 
-Running `inspect -d '02.01.2006'` on an input file named `bseg.csv`:
+Running `inspect -d '02.01.2006' bseg.csv` using the following `bseg.csv` file:
 
 | mandt | bukrs | belnr      | augdt      |
 |-------|-------|------------|------------|
@@ -40,10 +40,10 @@ Some columns may also contain currencies (or other rational numbers) that are fo
 
 Which allows us to specify that column `CHF` is of data type `NUMERIC` whose format consists of a single quote `'` as grouping mark and a dot `.` as decimal mark.
 
-## Examples
+## Examples on how to use the options
 
 TODO
 
-# Licence
+# License
 
-GPLv3 Licence
+GPLv3 License
