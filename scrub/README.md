@@ -24,13 +24,7 @@ using the following`bseg.metadata` file:
 
 Will generate the following tab-separated output file:
 
-|| mandt | bukrs | belnr      | augdt      |
-|-------|-------|------------|------------|
-| 100   | 0050  | 0003862080 | 2020-03-16 |
-| 100   | 0050  | 0003862081 | 2020-03-16 |
-| 100   | 0050  | 0003862082 | 2020-01-23 |
-| 100   | 0050  | 0003862091 | 2020-01-30 |
- mandt | bukrs | belnr      | augdt      |
+| mandt | bukrs | belnr      | augdt      |
 |-------|-------|------------|------------|
 | 100   | 0050  | 0003862080 | 2020-03-16 |
 | 100   | 0050  | 0003862081 | 2020-03-16 |
