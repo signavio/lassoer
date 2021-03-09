@@ -46,7 +46,3 @@ LIMIT 1
 ## Examples on how to use the options
 
 TODO
-
-# License
-
-GPLv3 License

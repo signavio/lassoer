@@ -28,4 +28,4 @@ If you are running nix on your system, just `cd` into one of the sub directories
 
 # License
 
-GPLv3 License
+MIT License

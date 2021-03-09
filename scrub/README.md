@@ -38,7 +38,3 @@ It's useful to have dates in this format because, when generating an process min
 ## Examples on how to use the options
 
 TODO
-
-# License
-
-GPLv3 License

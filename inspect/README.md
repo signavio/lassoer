@@ -43,7 +43,3 @@ Which allows us to specify that column `CHF` is of data type `NUMERIC` whose for
 ## Examples on how to use the options
 
 TODO
-
-# License
-
-GPLv3 License
