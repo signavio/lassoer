@@ -38,6 +38,7 @@ as.cols<- function(sql_type) {
     "float" = col_double(),
     "double" = col_double(),
     "integer" = col_integer(),
+    "bigint" = col_number(),
     "numeric" = col_number(),
     "time" = {
       if(format == '') return(col_time())
