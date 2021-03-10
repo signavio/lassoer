@@ -95,7 +95,6 @@ spec_with_ref_fmt <- function(df, options) {
     data_type <- class(spec$cols[[idx]])[1]
     is_date_not_empty <- !is.na(options$date_format) || options$date_format != ''
     is_time_not_empty <- !is.na(options$time_format) || options$time_format != ''
-    is_number_not_empty <- !is.na(options$number_format) || options$number_format != ''
     is_datetime_not_empty <- !is.na(options$datetime_format) || options$datetime_format != ''
     new_col <- switch (
       data_type,
@@ -126,6 +125,16 @@ spec_with_ref_fmt <- function(df, options) {
           setNames(list(col_datetime()), column_name)
         }
       },
+      "collector_double" =
+      {
+        ifelse(nrow(df) > 1000, sample_size <- 1000, sample_size <- nrow(df))
+        double_or_integer <- df[sample(1:nrow(df), sample_size), column_name]
+        if (isTRUE(all(double_or_integer == floor(double_or_integer)))) {
+          setNames(list(col_integer()), column_name)
+        } else {
+          setNames(list(col_double()), column_name)
+        }
+      }
     )
     if (is.null(new_col)) {
       new_spec <- c(new_spec, setNames(list(spec$cols[[idx]]), column_name))

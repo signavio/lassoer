@@ -28,7 +28,7 @@ as.sql_ddl <- function(col_spec, locale=default_locale()) {
     "collector_date" = glue::glue("DATE('{to_reference(format)}')",na=''),
     "collector_datetime" = glue::glue("TIMESTAMP('{to_reference(format)}')",na=''),
     "collector_double" = "DECIMAL(38,20)",
-    "collector_integer" = "INTEGER",
+    "collector_integer" = "BIGINT",
     # Set collector_logical explicitly to VARCHAR and not BOOLEAN
     # because read_delim()'s auto type detection incorrectly
     # expects columns which contain many NA values
