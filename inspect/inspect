@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(readr))
-suppressPackageStartupMessages(require(readxl))
+suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(sqltypes))
 suppressPackageStartupMessages(require(stringr))
 options(scipen=999)
@@ -127,9 +127,9 @@ spec_with_ref_fmt <- function(df, options) {
       },
       "collector_double" =
       {
-        ifelse(nrow(df) > 1000, sample_size <- 1000, sample_size <- nrow(df))
-        double_or_integer <- df[sample(1:nrow(df), sample_size), column_name]
-        if (isTRUE(all(double_or_integer == floor(double_or_integer)))) {
+        is_whole <- function(x) isTRUE(all(floor(x) == x))
+        double_or_integer <- df %>% select(all_of(column_name)) %>% filter(!is.na(.))
+        if (is_whole(double_or_integer)) {
           setNames(list(col_integer()), column_name)
         } else {
           setNames(list(col_double()), column_name)
