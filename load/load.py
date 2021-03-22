@@ -47,7 +47,7 @@ def load_into_sqlite(env, options, target, csv_file, metadata_file):
         import_text = ".headers on\n" +\
         ".mode csv\n" +\
         ".separator '\t'\n" +\
-        f'.import \'{csv_file}\' "{sanitized_table_name}"'
+        f'.import --skip 1 \'{csv_file}\' "{sanitized_table_name}"'
         process = Popen(f"sqlite3 {path_to_db_file}", stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
         stdout, stderr = process.communicate(bytes(import_text, encoding="UTF-8"))
         if len(stdout) > 0:
