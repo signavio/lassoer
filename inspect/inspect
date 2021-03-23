@@ -42,11 +42,9 @@ inspect <- function(file, options) {
     quit(status=1)
   } else {
     delimiter <- get_delimiter(readLines(file,n=1))
-    col_types <- spec_with_ref_fmt(
-      read_delim(file=file,delim=delimiter,guess_max=1e5,locale=locale,
-                 na=options$na_values,trim_ws=TRUE,col_types=cols()),
-      options
-    )
+    df <- read_delim(file=file,delim=delimiter,guess_max=1e5,locale=locale,
+                 na=options$na_values,trim_ws=TRUE,col_types=cols())
+    col_types <- spec_with_ref_fmt(df, options)
   }
   column_types <- c()
   for (idx in 1:length(col_types$cols)) {
@@ -54,12 +52,9 @@ inspect <- function(file, options) {
   }
   schema <- data.frame(table_name=str_extract(basename(file), "[^\\.]+"),
                        column_name=names(col_types$cols),
+                       cleaned_name=names(janitor::clean_names(df)),
                        data_type=column_types)
   schema
-}
-#TODO use with --verify flag
-compare <- function(file, schema) {
-  system2("comm -12 {file} {schema}")
 }
 is_excel_file <- function(file) {
   mime_type <- system2("file", c("--mime-type", shQuote(file)), stdout=TRUE)

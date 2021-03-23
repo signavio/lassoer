@@ -11,6 +11,6 @@ let
           src = ../sqltypes;
           propagatedBuildInputs = [ stringr readr ];
         };
-      in [ sqltypes dplyr optparse glue readr stringr ];
+      in [ sqltypes dplyr janitor optparse glue readr stringr ];
   });
 in pkgs.mkShell { buildInputs = [ rEnv ]; }
