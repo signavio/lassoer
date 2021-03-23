@@ -75,14 +75,14 @@ def create_stmt_ddl_from(metadata_file):
         reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
         if first_row["data_type"].startswith("DECIMAL"):
-            create_stmt = f'"{first_row["column_name"].lower()}" {first_row["data_type"]},'
+            create_stmt = f'"{first_row["cleaned_name"]}" {first_row["data_type"]},'
         else:
-            create_stmt = f'"{first_row["column_name"].lower()}" {re.findall("[^(]+", first_row["data_type"])[0]},'
+            create_stmt = f'"{first_row["cleaned_name"]}" {re.findall("[^(]+", first_row["data_type"])[0]},'
         for row in reader:
             if row["data_type"].startswith("DECIMAL"):
-                create_stmt += f' "{row["column_name"].lower()}" {row["data_type"]},'
+                create_stmt += f' "{row["cleaned_name"]}" {row["data_type"]},'
             else:
-                create_stmt += f' "{row["column_name"].lower()}" {re.findall("[^(]+", row["data_type"])[0]},'
+                create_stmt += f' "{row["cleaned_name"]}" {re.findall("[^(]+", row["data_type"])[0]},'
         create_stmt = create_stmt[:-1] + ')'
     return create_stmt
     
@@ -144,7 +144,7 @@ def as_parquet(csv_file, metadata_file):
         metadata_file,
         parse_options=schema_parse_options
     )
-    pyarrow_schema = create_pyarrow_schema(schema["column_name"], schema["data_type"])
+    pyarrow_schema = create_pyarrow_schema(schema["cleaned_name"], schema["data_type"])
     csv_convert_options = csv.ConvertOptions(column_types=pyarrow_schema)
     parquet_table = csv.read_csv(
             csv_file,
