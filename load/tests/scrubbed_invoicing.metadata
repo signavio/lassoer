@@ -1,10 +1,10 @@
 table_name|column_name|data_type
 scrubbed_invoicing|comment|VARCHAR
-scrubbed_invoicing|client_number|DECIMAL(38,20)
+scrubbed_invoicing|client_number|BIGINT
 scrubbed_invoicing|timestamp|VARCHAR
 scrubbed_invoicing|tx_number|VARCHAR
 scrubbed_invoicing|step|VARCHAR
-scrubbed_invoicing|invoice_status|DECIMAL(38,20)
+scrubbed_invoicing|invoice_status|BIGINT
 scrubbed_invoicing|country|VARCHAR
 scrubbed_invoicing|invoice_type|VARCHAR
-scrubbed_invoicing|COMPANY|DECIMAL(38,20)
+scrubbed_invoicing|COMPANY|BIGINT
