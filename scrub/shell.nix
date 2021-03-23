@@ -11,6 +11,29 @@ let
           src = ../sqltypes;
           propagatedBuildInputs = [ stringr readr ];
         };
-      in [ sqltypes dplyr readxl optparse janitor glue readr stringr ];
+      in [
+        sqltypes
+        dplyr
+        readxl
+        optparse
+        janitor
+        glue
+        readr
+        stringr
+        doParallel
+      ];
   });
-in pkgs.mkShell { buildInputs = [ pkgs.icu rEnv ]; }
+  tsvAppend = (pkgs.stdenv.mkDerivation {
+    name = "tsv-utils";
+    src = ../tsv-utils;
+    version = "2.1.2";
+    buildInputs = [ pkgs.dmd ];
+    buildPhase = ''
+      cd tsv-append && make && cd ..
+    '';
+    installPhase = ''
+      mkdir -p $out/bin
+      cp bin/tsv-append $out/bin/
+    '';
+  });
+in pkgs.mkShell { buildInputs = [ pkgs.icu rEnv tsvAppend ]; }
