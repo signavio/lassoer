@@ -42,8 +42,8 @@ inspect <- function(file, options) {
     quit(status=1)
   } else {
     delimiter <- get_delimiter(readLines(file,n=1))
-    df <- read_delim(file=file,delim=delimiter,guess_max=1e5,locale=locale,
-                 na=options$na_values,trim_ws=TRUE,col_types=cols())
+    df <- read_delim(file=file,delim=delimiter,guess_max=1e6,locale=locale,
+                 na=options$na_values,trim_ws=TRUE,col_types=cols(),n_max=1e6)
     col_types <- spec_with_ref_fmt(df, options)
   }
   column_types <- c()
