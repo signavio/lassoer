@@ -70,7 +70,7 @@ split_file <- function(file) {
   mem_max <- str_match(system2("grep", c("MemTotal", "/proc/meminfo"), stdout=TRUE), "(\\d+)\\s+kB")[[2]] %>% as.integer
   num_cores <- detectCores()
   file_size <- file.info(file)$size
-  number_of_lines<- system2("wc", c("--lines", file), stdout=TRUE) %>% str_extract("\\d+") %>% as.integer
+  number_of_lines<- system2("wc", c("--lines", file %>% basename %>% shQuote), stdout=TRUE) %>% str_extract("\\d+") %>% as.integer
   number_of_lines_per_part <- ceiling(number_of_lines / num_cores)
   file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
   file_suffix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(3)
