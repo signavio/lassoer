@@ -72,16 +72,19 @@ get_delimiter <- function(head) {
   header[delim_idx]
 }
 get_locale <- function(options) {
-  grouping_mark = str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")[2]
-  loc <- list(
-    date_format = as.cols(glue::glue("DATE('{options$date_format}')"))$format,
-    time_format = as.cols(glue::glue("TIME('{options$time_format}')"))$format,
-    decimal_mark = str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")[3],
-    grouping_mark = ifelse(is.na(grouping_mark), "", grouping_mark)
-  )
-  with_empty_options_removed <- loc[loc != "" & !is.na(loc)]
-  if (length(with_empty_options_removed) == 0) return(default_locale())
-  do.call(locale, with_empty_options_removed)
+  loc <- default_locale()
+  numeric_format_match <- str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")
+  if (!is.na(numeric_format_match[1])) {
+    loc$grouping_mark <- ifelse(is.na(numeric_format_match[2]), "", numeric_format_match[2])
+    loc$decimal_mark <- ifelse(is.na(numeric_format_match[3]), "", numeric_format_match[3])
+  }
+  if (options$date_format != '') {
+    loc$date_format<- as.cols(glue::glue("DATE('{options$date_format}')"))$format
+  }
+  if (options$time_format != '') {
+    loc$time_format <- as.cols(glue::glue("TIME('{options$time_format}')"))$format
+  }
+  loc
 } 
 spec_with_ref_fmt <- function(df, options) {
   spec <- spec(df)
@@ -128,7 +131,7 @@ spec_with_ref_fmt <- function(df, options) {
         if (is_whole(double_or_integer)) {
           setNames(list(col_integer()), column_name)
         } else {
-          setNames(list(col_double()), column_name)
+          setNames(list(col_number()), column_name)
         }
       }
     )
