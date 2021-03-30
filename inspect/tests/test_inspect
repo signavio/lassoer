@@ -22,7 +22,17 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "3. Test option -d recognizes locale specific date columns"
+echo "3. Test option -u recognizes locale specific numeric columns with empty grouping mark"
+IN="tests/bseg-anonymized-with-empty-grouping-mark.tsv"
+OUT="tests/bseg-option-u.tsv.metadata"
+REF="tests/reference_bseg-option-with-empty-grouping-mark.tsv.metadata"
+inspect -u "8999,99" "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+echo "4. Test option -d recognizes locale specific date columns"
 IN="tests/bseg-anonymized-with-options.tsv"
 OUT="tests/bseg-option-d.tsv.metadata"
 REF="tests/reference_bseg-option-d.tsv.metadata"
@@ -33,7 +43,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "4. Test option -n converts na values to an empty string"
+echo "5. Test option -n converts na values to an empty string"
 IN="tests/bseg-anonymized-with-options.tsv"
 OUT="tests/bseg-option-n.tsv.metadata"
 REF="tests/reference_bseg-option-n.tsv.metadata"

@@ -72,11 +72,12 @@ get_delimiter <- function(head) {
   header[delim_idx]
 }
 get_locale <- function(options) {
+  grouping_mark = str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")[2]
   loc <- list(
     date_format = as.cols(glue::glue("DATE('{options$date_format}')"))$format,
     time_format = as.cols(glue::glue("TIME('{options$time_format}')"))$format,
-    decimal_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])?9?9?")[3],
-    grouping_mark = str_match(options$numeric_format, "8([:punct:])999([:punct:])?9?9?")[2]
+    decimal_mark = str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")[3],
+    grouping_mark = ifelse(is.na(grouping_mark), "", grouping_mark)
   )
   with_empty_options_removed <- loc[loc != "" & !is.na(loc)]
   if (length(with_empty_options_removed) == 0) return(default_locale())

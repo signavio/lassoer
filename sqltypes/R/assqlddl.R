@@ -37,7 +37,8 @@ as.sql_ddl <- function(col_spec, locale=default_locale()) {
     "collector_logical" = "VARCHAR",
     "collector_number" = glue::glue("NUMERIC('8{group}999{dec}99')",
                                     group = locale$grouping_mark,
-                                    dec = locale$decimal_mark),
+                                    dec = locale$decimal_mark,
+                                    na=''),
     "collector_time" = glue::glue("TIME('{to_reference(format)}')",na=''),
   )
 }
