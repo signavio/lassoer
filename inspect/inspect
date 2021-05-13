@@ -27,6 +27,14 @@ parser <- add_option(parser, c("-u", "--numeric-format"),default='',
                      help="Locale specific numeric format used in the data")
 parser <- add_option(parser, c("-n", "--na-values"),default='',
                      help="Specify values considered to be NA (use a semicolon to seperate multiple values)")
+parser <- add_option(parser, c("-q", "--quote"),default='"',
+                     help="Specify the character used to quote strings [default: double-quotes]")
+parser <- add_option(parser, c("-K", "--skip-lines"),default=0,type="integer",
+                     help="Specify the number of initial lines to skip before the header row")
+parser <- add_option(parser, c("-I", "--ini-format"),action="store_true",default=FALSE,
+                     help="Output metadata as CDATA Schema.ini format (more or less like TOML)")
+parser <- add_option(parser, c("-b", "--escape-backslash"),action="store_true",default=FALSE,
+                     help="Does the file use backslashes to escape special characters? [default: %default]")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
 inspect <- function(file, options) {
@@ -43,18 +51,38 @@ inspect <- function(file, options) {
   } else {
     delimiter <- get_delimiter(readLines(file,n=1))
     df <- read_delim(file=file,delim=delimiter,guess_max=1e6,locale=locale,
-                 na=options$na_values,trim_ws=TRUE,col_types=cols(),n_max=1e6)
+                     na=options$na_values,trim_ws=TRUE,col_types=cols(),
+                     n_max=1e6,quote=options$quote,skip=options$skip_lines,
+                     escape_backslash=options$escape_backslash
+                     )
     col_types <- spec_with_ref_fmt(df, options)
   }
   column_types <- c()
   for (idx in 1:length(col_types$cols)) {
     column_types <- c(column_types, as.sql_ddl(col_types$cols[[idx]], locale=locale))
   }
-  schema <- data.frame(table_name=str_extract(basename(file), "[^\\.]+"),
-                       column_name=names(col_types$cols),
-                       cleaned_name=names(janitor::clean_names(df)),
-                       data_type=column_types)
+  schema <- data.frame()
+  table_name <- str_extract(basename(file), "[^\\.]+")
+  column_name <- names(col_types$cols)
+  cleaned_name <- names(janitor::clean_names(df))
+  data_type <- column_types
+  if (options$ini_format) {
+    return(generate_cdata_ini(table_name, cleaned_name, data_type))
+  }
+  schema <- data.frame(table_name=table_name,column_name=column_name,
+                       cleaned_name=cleaned_name,data_type=data_type)
   schema
+}
+generate_cdata_ini <- function(table_name, cleaned_names, data_types) {
+  result <- str_glue("[{table_name}.tsv]")
+  result <- str_c(result, "\nColNameHeader=True\n")
+  result <- str_c(result, "Format=TabDelimited\n")
+  result <- str_c(result, "DateTimeFormat=yyyy-M-dTHH:mm:ss.SSSZ\n")
+  for (idx in 1:length(cleaned_names)) {
+    data_type <- str_extract(data_types[idx], "\\w+")
+    result <- str_c(result, str_glue("Col{idx}={cleaned_names[idx]} {data_type}"), "\n")
+  }
+  result
 }
 is_excel_file <- function(file) {
   mime_type <- system2("file", c("--mime-type", shQuote(file)), stdout=TRUE)
@@ -147,7 +175,9 @@ spec_with_ref_fmt <- function(df, options) {
 parsed$options$na_values <- str_split(parsed$options$na_values, ';')[[1]]
 write(glue::glue('\nInspecting {parsed$args[1]}...'), stderr())
 schema <- inspect(parsed$args[1], parsed$options)
-if (parsed$options$validate != "") {
+if (parsed$options$ini_format) {
+  writeLines(schema,file("/dev/stdout",raw=TRUE))
+} else if (parsed$options$validate != "") {
   pre_defined_schema <- read_csv(file=parsed$options$validate,col_types=cols())
   write_csv(setdiff(schema,pre_defined_schema[do.call(order, schema),]), file('/dev/stdout', raw=T), col_names=TRUE, na='');
 } else {
