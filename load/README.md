@@ -4,9 +4,9 @@ Use the `load` utility to copy the contents of a tab-separated input file into a
 
 Refer to `inspect`'s [README](../inspect/README.md) to learn how to generate a .metadata file.
 
-Running `load -f .env bseg.tsv bseg.metadata` performs the following tasks: 
+Running `load --environment-file .env bseg.tsv bseg.metadata` performs the following tasks: 
 
-1. Read the environment variable `$DATABASE_URL` from the `.env` file to determine which SQL database to connect to
+1. Read the value of the `DATABASE_URL` environment variable from the `.env` file to determine which SQL database to connect to
 2. Parse the `bseg.metadata` file to generate a SQL `CREATE TABLE` statement which will then be executed on the target SQL database 
 3. Copy the contents of the `bseg.tsv` file to the newly created table. 
 
@@ -21,12 +21,12 @@ If you run the `load` command specified above with the contents of the `bseg.tsv
 
 whose metadata is specified in the file `bseg.metadata`
 
-| table_name | column | data_type          |
-|------------|--------|--------------------|
-| bseg       | mandt  | DECIMAL(38,20)     |
-| bseg       | bukrs  | VARCHAR            |
-| bseg       | belnr  | VARCHAR            |
-| bseg       | augdt  | DATE               |
+| table_name | column | data_type |
+|------------|--------|-----------|
+| bseg       | mandt  | BIGINT    |
+| bseg       | bukrs  | VARCHAR   |
+| bseg       | belnr  | VARCHAR   |
+| bseg       | augdt  | DATE      |
 
 into the target PostgreSQL "test" database as specified in the `.env` file
 
@@ -35,7 +35,7 @@ into the target PostgreSQL "test" database as specified in the `.env` file
 DATABASE_URL="user:passw0rd@pgsql.local/test"
 ```
 
-You will be able to then execute SQL queries on the `bseg` table like so to retrieve the first row
+You will be able to execute SQL queries on the `bseg` table like so to retrieve the first row
 
 ``` sql
 SELECT mandt

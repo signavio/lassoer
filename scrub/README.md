@@ -17,7 +17,7 @@ using the following`bseg.metadata` file:
 
 | table_name | column | data_type          |
 |------------|--------|--------------------|
-| bseg       | mandt  | DECIMAL(38,20)     |
+| bseg       | mandt  | BIGINT             |
 | bseg       | bukrs  | VARCHAR            |
 | bseg       | belnr  | VARCHAR            |
 | bseg       | augdt  | DATE('02.01.2006') |

@@ -15,7 +15,7 @@ will generate the following .metadata output file:
 
 | table_name | column | data_type          |
 |------------|--------|--------------------|
-| bseg       | mandt  | DECIMAL(38,20)     |
+| bseg       | mandt  | BIGINT             |
 | bseg       | bukrs  | VARCHAR            |
 | bseg       | belnr  | VARCHAR            |
 | bseg       | augdt  | DATE('02.01.2006') |
@@ -30,15 +30,15 @@ Instead of specifying a formatting string using arcane `%Y` or `%m` characters, 
 
 As shown in the example above, you specify what **the reference time** looks like in the column's _target_ format. **The reference time** correlates to a specific point in time, namely to Monday, January 2 15:04:05 2006 (Mountain Standard Time), which is equivalent to the unix epoch time `1136239445`. The reference time is easy to remember because it can also be thought of as `01/02 03:04:05PM '06 -0700`.
 
-Some columns may also contain currencies (or other rational numbers) that are formatted with locale specific decimal and/or grouping marks. This could be the case for instance when we have a column called `CHF` representing Swiss Francs as `203'999.99` for example. You can use the `inspect` command with option `-n` to specify what the **the reference currency** looks like formatted as Swiss Francs.
+Some columns may also contain currencies (or other rational numbers) that are formatted with locale specific decimal and/or grouping marks. This could be the case for instance when we have a column called `CHF` representing Swiss Francs as `203'999.99` for example. You can use the `inspect` command with option `-u` to specify what the **the reference currency** looks like formatted as Swiss Francs.
 
-**The reference currency** correlates to the value "eight thousand nine hundred and ninety nine euros and ninety nine cents". Calling `inspect -n "8'999.99"` on the input file containing column `CHF` would generate the following .metadata output file:
+**The reference currency** correlates to the value "eight thousand nine hundred and ninety nine euros and ninety nine cents". Calling `inspect -u "8'999.99"` on the input file containing column `CHF` would generate the following .metadata output file:
 
 | table_name | column | data_type           |
 |------------|--------|---------------------|
 | bseg       | CHF    | NUMERIC('8'999.99') |
 
-Which allows us to specify that column `CHF` is of data type `NUMERIC` whose format consists of a single quote `'` as grouping mark and a dot `.` as decimal mark.
+Which allows us to specify that column `CHF` is of data type `NUMERIC` whose format consists of a single quote `(')` as grouping mark and a dot `(.)` as decimal mark.
 
 ## Examples on how to use the options
 
