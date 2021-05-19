@@ -80,7 +80,12 @@ generate_cdata_ini <- function(table_name, cleaned_names, data_types) {
   result <- str_c(result, "DateTimeFormat=yyyy-M-dTHH:mm:ss.SSSZ\n")
   for (idx in 1:length(cleaned_names)) {
     data_type <- str_extract(data_types[idx], "\\w+")
-    result <- str_c(result, str_glue("Col{idx}={cleaned_names[idx]} {data_type}"), "\n")
+    # Since CDATA plays more nicely with DECIMAL
+    if (data_type == 'NUMERIC') {
+      result <- str_c(result, str_glue("Col{idx}={cleaned_names[idx]} DECIMAL"), "\n")
+    } else {
+      result <- str_c(result, str_glue("Col{idx}={cleaned_names[idx]} {data_type}"), "\n")
+    }
   }
   result
 }
