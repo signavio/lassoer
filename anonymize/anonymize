@@ -26,10 +26,10 @@ const parsePlan = (file) => {
   // anonymize the values in the columns of the input file. and the last
   // column specifies under which condition to anonymize the column
   return _.map(_.initial(data.split('\n')), (row) => {
-	  const inputColumnName = row.split(',')[0]
-	  const outputColumnName = row.split(',')[1]
-	  const fakerFunction = row.split(',')[2]
-	  const anonymizeIf = row.split(',')[3]
+	  const inputColumnName = row.split(';')[0]
+	  const outputColumnName = row.split(';')[1]
+	  const fakerFunction = row.split(';')[2]
+	  const anonymizeIf = row.split(';')[3]
 	  return [inputColumnName, outputColumnName, fakerFunction, anonymizeIf]
   })
 }

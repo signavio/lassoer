@@ -3,8 +3,8 @@
 }:
 
 let
-  archive = (pkgs.writeShellScriptBin "archive"
-    (builtins.readFile "/home/sd/projects/lassoer/archive/archive"));
+  archive =
+    (pkgs.writeShellScriptBin "archive" (builtins.readFile "./archive"));
 
 in pkgs.stdenv.mkDerivation {
   name = "archive";
