@@ -71,7 +71,7 @@ def load_into_postgresql(env, options, target, csv_file, metadata_file):
 
 def create_stmt_ddl_from(metadata_file):
     create_stmt = ""
-    with open(metadata_file, newline='', errors="ignore") as csvfile:
+    with open(metadata_file, newline='', errors="replace") as csvfile:
         reader = csv.DictReader(csvfile, delimiter="|")
         first_row = next(reader)
         if first_row["data_type"].startswith("DECIMAL"):
