@@ -123,7 +123,9 @@ scrub <- function(file, options) {
       df <- sanitize_dataframe(df)
       return(write_tsv(df,file('/dev/stdout',raw=T),na=''))
    }
-   options$delimiter <- get_delimiter(readLines(file,n=1))
+   options$delimiter <- ifelse(options$skip_lines > 0,
+                               file %>% readLines(n=1+options$skip_lines) %>% tail(n=1) %>% get_delimiter,
+                               file %>% readLines(n=1) %>% get_delimiter)
    if (options$split) {
       file_parts <- split_file(file)
       header <- readLines(file,n=1)

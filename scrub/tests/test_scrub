@@ -10,7 +10,18 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "2. Test that we can parse a tab delimited file"
+echo "2. Test that we can parse a pipe delimited file when skipping comment before header"
+IN="tests/invoicing-pipe-delimited-with-comments.csv"
+OUT="tests/scrubbed_invoicing-pipe-delimited-with-comments.csv"
+REF="tests/reference_invoicing-pipe-delimited.csv"
+scrub --skip-lines=1 "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
+echo "3. Test that we can parse a tab delimited file"
 IN="tests/invoicing-tab-delimited.tsv"
 OUT="tests/scrubbed_invoicing-tab-delimited.csv"
 REF="tests/reference_invoicing-tab-delimited.csv"
@@ -21,7 +32,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "3. Test that we can parse a binary excel file"
+echo "4. Test that we can parse a binary excel file"
 IN="tests/invoicing.xls"
 OUT="tests/scrubbed_invoicing.csv"
 REF="tests/reference_invoicing.csv"
@@ -32,7 +43,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "4. Test that we can parse an .xml excel file"
+echo "5. Test that we can parse an .xml excel file"
 IN="tests/invoicing.xlsx"
 OUT="tests/scrubbed_invoicing.csv"
 REF="tests/reference_invoicing.csv"
@@ -43,7 +54,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "5. Test that we can parse an openoffice excel file"
+echo "6. Test that we can parse an openoffice excel file"
 IN="tests/invoicing-openoffice-format.xlsx"
 OUT="tests/scrubbed_invoicing.csv"
 REF="tests/reference_invoicing.csv"
@@ -54,7 +65,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "6. Test that using option -f (schema file) works with file containing trailing backslash in first field"
+echo "7. Test that using option -f (schema file) works with file containing trailing backslash in first field"
 IN="tests/invoicing-trailing-backslash.csv"
 SCHEMA="tests/invoicing-trailing-backslash.csv.metadata"
 OUT="tests/scrubbed_invoicing-trailing-backslash.csv"
@@ -66,7 +77,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "7. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
+echo "8. Test that using option -f (schema file) errors out when the schema file contains incorrect data types"
 IN="tests/invoicing-trailing-backslash.csv"
 SCHEMA="tests/bad-data-types_invoicing-trailing-backslash.csv.metadata"
 OUT="tests/scrubbed_bad-data-types_invoicing-trailing-backslash.csv"
@@ -78,7 +89,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "8. Test that using option -n (NA values) with a single NA value works"
+echo "9. Test that using option -n (NA values) with a single NA value works"
 IN="tests/invoicing-with-na-value.csv"
 OUT="tests/scrubbed_invoicing-with-na-value.csv"
 REF="tests/reference_invoicing-with-na-value.csv"
@@ -89,7 +100,7 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
-echo "9. Test that using option -n (NA values) with a multiple NA values works"
+echo "10. Test that using option -n (NA values) with a multiple NA values works"
 IN="tests/invoicing-with-many-na-values.csv"
 OUT="tests/scrubbed_invoicing-with-many-na-values.csv"
 REF="tests/reference_invoicing-with-many-na-values.csv"
@@ -99,7 +110,7 @@ if cmp "$OUT" "$REF"; then
 else
     echo -e "FAIL ✘: \n\n"
 fi
-echo "10. Test that using option -q (quote) in combination with option -b (escape backslashes) works"
+echo "11. Test that using option -q (quote) in combination with option -b (escape backslashes) works"
 IN="tests/invoicing-with-single-quotes.csv"
 OUT="tests/scrubbed_invoicing-with-single-quotes.csv"
 REF="tests/reference_invoicing-with-single-quotes.csv"
