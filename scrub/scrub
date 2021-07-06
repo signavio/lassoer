@@ -1,16 +1,15 @@
 #!/usr/bin/env Rscript
 
-suppressPackageStartupMessages(require(doParallel))
 suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(glue))
 suppressPackageStartupMessages(require(magrittr))
 suppressPackageStartupMessages(require(optparse))
-suppressPackageStartupMessages(require(parallel))
 suppressPackageStartupMessages(require(readr))
 suppressPackageStartupMessages(require(readxl))
 suppressPackageStartupMessages(require(sqltypes))
 suppressPackageStartupMessages(require(stringr))
 options(scipen=999)
+
 
 usage <- 'scrub [options] file\n
 Clean-up .csv or .xls file and output result as .tsv to STDOUT'
@@ -56,7 +55,7 @@ read_delim_file <- function(file, options) {
       data_types <- c(data_types, list(as.cols(schema[idx,]$data_type)))
     }
     col_types <- setNames(data_types,col_names)
-    write(glue('With schema from file `{options$schema_file}`'), stderr())
+    write(glue('Using schema from file `{options$schema_file}`'), stderr())
     locale <- do.call(readr::locale, loc)
     return(read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=schema$cleaned_name,guess_max=1e5,
              escape_backslash=options$escape_backslash,escape_double=FALSE,trim_ws=TRUE,
@@ -72,22 +71,26 @@ read_delim_file <- function(file, options) {
 split_file <- function(file) {
   orig_dir <- getwd()
   dir_name <- dirname(file)
+  header <- readLines(file,n=1)
   setwd(dir_name)
-
-  mem_max <- str_match(system2("grep", c("MemTotal", "/proc/meminfo"), stdout=TRUE), "(\\d+)\\s+kB")[[2]] %>% as.integer
-  num_cores <- detectCores()
-  file_size <- file.info(file)$size
-  number_of_lines<- system2("wc", c("--lines", file %>% basename %>% shQuote), stdout=TRUE) %>% str_extract("\\d+") %>% as.integer
-  number_of_lines_per_part <- ceiling(number_of_lines / num_cores)
+  # Split up input file in such a way that the component parts are never
+  # larger than 450MB on a system with 64GB RAM for example
+  component_parts_ratio <- 0.007
+  mem_max <- str_match(system2("grep", c("MemTotal", "/proc/meminfo"), stdout=TRUE), "(\\d+)\\s+kB")[[2]] %>% as.integer * 1024
+  file_part_max_size <- mem_max * component_parts_ratio
+  file_size <- file.info(basename(file))$size
+  number_of_file_chunks <- ceiling(file_size / file_part_max_size)
   file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
   file_suffix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(3)
   system2("split", c("--numeric-suffixes",
-                     "--suffix-length", 3,
-                     "--lines", number_of_lines_per_part,
+                     "--suffix-length", 6,
+                     "--number", number_of_file_chunks,
                      "--additional-suffix", shQuote(file_suffix),
                      file %>% basename %>% shQuote, shQuote(file_prefix)))
   setwd(orig_dir)
-  Sys.glob(file.path(dirname(file), glue("{file_prefix}???{file_suffix}")))
+  split_files <- Sys.glob(file.path(dirname(file), glue("{file_prefix}??????{file_suffix}")))
+  system2("sed", c("--in-place", glue('"1i {header}"'), split_files))
+  split_files
 }
 read_excel_file <- function(file, options) {
   col_types <- c()
@@ -106,10 +109,7 @@ read_excel_file <- function(file, options) {
   read_excel(file, na=options$na_values, col_names=TRUE, trim_ws=TRUE, guess_max=1e5,
              skip=options$skip_lines, col_types=as.col_spec(col_types))
 }
-scrub_part <- function(header, path_to_file, options) {
-  if (!is.na(header)) {
-   system2("sed", c("--in-place", glue('"1i {header}"'), path_to_file))
-  }
+scrub_part <- function(path_to_file, header = NA, options = NA) {
    df <- read_delim_file(path_to_file, options)
    df <- sanitize_dataframe(df)
    file_prefix <- str_extract(basename(path_to_file), '[^\\.]+')
@@ -128,12 +128,15 @@ scrub <- function(file, options) {
                                file %>% readLines(n=1) %>% get_delimiter)
    if (options$split) {
       file_parts <- split_file(file)
-      header <- readLines(file,n=1)
-      scrub_part(NA,file_parts[1],options)
-      registerDoParallel(cores=ceiling(detectCores()/4))
-      foreach(i=2:length(file_parts)) %dopar% scrub_part(header, file_parts[i], options)
-      file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
-      return(system2('tsv-append', c("--header", file.path(dirname(file),glue("{shQuote(file_prefix)}*_scrubbed.tsv")))))
+      if(length(file_parts) > 1) {
+        header <- readLines(file,n=1)
+        num_jobs <- ceiling(detectCores()/4)
+        file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
+        system2('parallel', c("--will-cite", "--jobs", num_jobs, glue("'scrub -f {file.path(dirname(file))}/{shQuote(file_prefix)}.metadata {{}} > {{.}}_scrubbed.tsv'"), ":::", file_parts))
+        return(system2('tsv-append', c("--header", file.path(dirname(file),glue("{shQuote(file_prefix)}*_scrubbed.tsv")))))
+      } else {
+         sink(stderr());print(glue("Warning: not splitting {file} since it's too small"));sink();
+      }
    }
    df <- read_delim_file(file, options)
    df <- sanitize_dataframe(df)

@@ -12,15 +12,14 @@ let
           propagatedBuildInputs = [ stringr readr ];
         };
       in [
-        sqltypes
         dplyr
-        readxl
-        optparse
-        janitor
         glue
+        janitor
+        optparse
         readr
+        readxl
+        sqltypes
         stringr
-        doParallel
       ];
   });
   tsvAppend = (pkgs.stdenv.mkDerivation {

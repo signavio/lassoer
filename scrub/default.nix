@@ -12,14 +12,13 @@ let
           propagatedBuildInputs = [ stringr readr ];
         };
       in [
-        sqltypes
         dplyr
-        readxl
-        doParallel
-        optparse
-        janitor
         glue
+        janitor
+        optparse
         readr
+        readxl
+        sqltypes
         stringr
       ];
   };
