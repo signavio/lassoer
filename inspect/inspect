@@ -21,8 +21,6 @@ parser <- add_option(parser, c("-d", "--date-format"),default='',
                      help="Locale specific date format used in the data")
 parser <- add_option(parser, c("-t", "--time-format"),default='',
                      help="Locale specific time format used in the data")
-parser <- add_option(parser, c("-m", "--datetime-format"),default='',
-                     help="Locale specific datetime format used in the data")
 parser <- add_option(parser, c("-u", "--numeric-format"),default='',
                      help="Locale specific numeric format used in the data")
 parser <- add_option(parser, c("-n", "--na-values"),default='',
@@ -129,7 +127,6 @@ spec_with_ref_fmt <- function(df, options) {
     data_type <- class(spec$cols[[idx]])[1]
     is_date_not_empty <- !is.na(options$date_format) || options$date_format != ''
     is_time_not_empty <- !is.na(options$time_format) || options$time_format != ''
-    is_datetime_not_empty <- !is.na(options$datetime_format) || options$datetime_format != ''
     new_col <- switch (
       data_type,
       "collector_date" = 
@@ -148,15 +145,6 @@ spec_with_ref_fmt <- function(df, options) {
           setNames(list(col_time(format=format)), column_name)
         } else {
           setNames(list(col_time()), column_name)
-        }
-      },
-      "collector_datetime" =
-      {
-        if (is_datetime_not_empty) {
-          format <- as.cols(glue::glue('TIMESTAMP("{options$datetime_format}")'))$format
-          setNames(list(col_datetime(format=format)), column_name)
-        } else {
-          setNames(list(col_datetime()), column_name)
         }
       },
       "collector_double" =
