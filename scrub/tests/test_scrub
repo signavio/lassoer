@@ -121,5 +121,16 @@ else
     echo -e "FAIL ✘: \n\n"
 fi
 
+echo "12. Test that using option -P (keep_duplicates) doesn't remove duplicate lines"
+IN="tests/invoicing-pipe-delimited.csv"
+OUT="tests/scrubbed_invoicing-with-remove-duplicates.csv"
+REF="tests/reference_invoicing-with-remove-duplicates.csv"
+scrub -P "$IN" > "$OUT"
+if cmp "$OUT" "$REF"; then
+    echo -e "SUCCESS ✔: $OUT == $REF \n\n"
+else
+    echo -e "FAIL ✘: \n\n"
+fi
+
 # clean up
 rm tests/scrubbed_*

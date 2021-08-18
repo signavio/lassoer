@@ -23,6 +23,8 @@ parser <- add_option(parser, c("-q", "--quote"),default='"',
                      help="Specify the character used to quote strings [default: double-quotes]")
 parser <- add_option(parser, c("-K", "--skip-lines"),default=0,type="integer",
                      help="Specify the number of initial lines to skip before the header row")
+parser <- add_option(parser, c("-P", "--keep-duplicates"),action="store_true",default=FALSE,
+                     help="Do not remove duplicate lines from the input file [default: %default]")
 parser <- add_option(parser, c("-b", "--escape-backslash"),action="store_true",default=FALSE,
                      help="Does the file use backslashes to escape special characters? [default: %default]")
 parser <- add_option(parser, c("-s", "--split"),action="store_true",default=FALSE,
@@ -121,7 +123,7 @@ scrub <- function(file, options) {
    if (is_excel_file(file)) {
       df <- read_excel(file, na=options$na_values, col_names=TRUE,
                      trim_ws=TRUE, guess_max=1e5, skip=options$skip_lines)
-      df <- sanitize_dataframe(df)
+      df <- sanitize_dataframe(df, options$keep_duplicates)
       return(write_tsv(df,file('/dev/stdout',raw=T),na=''))
    }
    options$delimiter <- ifelse(options$skip_lines > 0,
@@ -140,11 +142,11 @@ scrub <- function(file, options) {
       }
    }
    df <- read_delim_file(file, options)
-   df <- sanitize_dataframe(df)
+   df <- sanitize_dataframe(df, options$keep_duplicates)
    write_tsv(df,file('/dev/stdout',raw=T),na='')
 }
-sanitize_dataframe <- function(df) {
-   df %>%
+sanitize_dataframe <- function(df, keep_duplicates) {
+   df %<>%
       # Remove trailing backslashes to play nicely with csv parsers
       mutate_if(is.character, ~ gsub('(\\x{005c}+)$', '', ., perl=T)) %>%
       # Whitespace all control characters to play nicely with csv parsers
@@ -154,9 +156,10 @@ sanitize_dataframe <- function(df) {
          if (length(problems(df)$row) > 0)
             slice(.data=., -(problems(df)$row))
          else .
-      } %>%
-      # Remove duplicates
-      distinct
+      }
+    # Remove duplicates by default
+    ifelse(keep_duplicates, df, df %<>% distinct)
+    df
 }
 is_excel_file <- function(file) {
   mime_type <- system2("file", c("--mime-type", shQuote(file)), stdout=TRUE)
