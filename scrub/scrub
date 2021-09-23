@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 
+suppressPackageStartupMessages(require(doParallel))
 suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(glue))
 suppressPackageStartupMessages(require(magrittr))
@@ -112,9 +113,9 @@ read_excel_file <- function(file, options) {
   read_excel(file, na=options$na_values, col_names=TRUE, trim_ws=TRUE, guess_max=1e5,
              skip=options$skip_lines, col_types=as.col_spec(col_types))
 }
-scrub_part <- function(path_to_file, header = NA, options = NA) {
+scrub_part <- function(path_to_file, options) {
    df <- read_delim_file(path_to_file, options)
-   df <- sanitize_dataframe(df)
+   df <- sanitize_dataframe(df, options$keep_duplicates)
    file_prefix <- str_extract(basename(path_to_file), '[^\\.]+')
    output_path_to_filename <- file.path(dirname(path_to_file), glue("{file_prefix}_scrubbed.tsv"))
    write_tsv(df, output_path_to_filename, na='');
@@ -132,10 +133,9 @@ scrub <- function(file, options) {
    if (options$split) {
       file_parts <- split_file(file)
       if(length(file_parts) > 1) {
-        header <- readLines(file,n=1)
-        num_jobs <- ceiling(detectCores()/4)
+        registerDoParallel(cores=ceiling(detectCores()/4))
         file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
-        system2('parallel', c("--will-cite", "--jobs", num_jobs, glue("'scrub -f {file.path(dirname(file))}/{shQuote(file_prefix)}.metadata {{}} > {{.}}_scrubbed.tsv'"), ":::", file_parts))
+        foreach(i=1:length(file_parts)) %dopar% scrub_part(file_parts[i],options)
         return(system2('tsv-append', c("--header", file.path(dirname(file),glue("{shQuote(file_prefix)}*_scrubbed.tsv")))))
       } else {
          sink(stderr());print(glue("Warning: not splitting {file} since it's too small"));sink();
@@ -147,10 +147,12 @@ scrub <- function(file, options) {
 }
 sanitize_dataframe <- function(df, keep_duplicates) {
    df %<>%
-      # Remove trailing backslashes to play nicely with csv parsers
-      mutate_if(is.character, ~ gsub('(\\x{005c}+)$', '', ., perl=T)) %>%
+      # Remove trailing backslashes to play nicely with csv parsers.
+      # Four backslashes in regex patterns translates to one '\', see 
+      # https://github.com/rstudio/cheatsheets/blob/master/strings.pdf
+      mutate_if(is.character, ~ str_remove(., '(\\\\+)$')) %>%
       # Whitespace all control characters to play nicely with csv parsers
-      mutate_if(is.character, ~ gsub('[[:cntrl:]]', ' ', ., perl=T)) %>%
+      mutate_if(is.character, ~ str_replace(., '[[:cntrl:]]', fixed(' '))) %>%
       # Remove dirty, misbehaving rows
       {
          if (length(problems(df)$row) > 0)

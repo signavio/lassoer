@@ -12,6 +12,7 @@ let
           propagatedBuildInputs = [ stringr readr ];
         };
       in [
+        doParallel
         dplyr
         glue
         janitor
