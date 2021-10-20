@@ -72,7 +72,7 @@ inspect <- function(file, options) {
   schema
 }
 generate_cdata_ini <- function(table_name, cleaned_names, data_types) {
-  result <- str_glue("[{table_name}.tsv]")
+  result <- str_glue("[{table_name}.csv]")
   result <- str_c(result, "\nColNameHeader=True\n")
   result <- str_c(result, "Format=TabDelimited\n")
   result <- str_c(result, "DateTimeFormat=yyyy-M-dTHH:mm:ss.SSSZ\n")
