@@ -48,6 +48,7 @@ read_delim_file <- function(file, options) {
     schema <- read_delim(options$schema_file,col_names=TRUE,col_types=cols(),delim='|')
     col_names <- c()
     data_types <- c()
+    file_prefix <- file %>% basename %>% str_match("([^\\.]+)(\\..+)") %>% nth(2)
     for (idx in 1:(nrow(schema))) {
   numeric_format_match <- str_match(options$numeric_format, "8([:punct:])?999([:punct:])?9?9?")
       numeric_format_match <- str_match(schema[idx,]$data_type, "8([:punct:])?999([:punct:])?9?9?")
@@ -55,13 +56,15 @@ read_delim_file <- function(file, options) {
          loc$grouping_mark <- ifelse(is.na(numeric_format_match[2]), "", numeric_format_match[2])
          loc$decimal_mark <- ifelse(is.na(numeric_format_match[3]), "", numeric_format_match[3])
       }
-      col_names <- c(col_names, schema[idx,]$cleaned_name)
-      data_types <- c(data_types, list(as.cols(schema[idx,]$data_type)))
+      if (file_prefix == schema[idx,]$table_name) {
+        col_names <- c(col_names, schema[idx,]$cleaned_name)
+        data_types <- c(data_types, list(as.cols(schema[idx,]$data_type)))
+      }
     }
     col_types <- setNames(data_types,col_names)
     write(glue('Using schema from file `{options$schema_file}`'), stderr())
     locale <- do.call(readr::locale, loc)
-    return(read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=schema$cleaned_name,guess_max=1e5,
+    return(read_delim(file=pipe(prescrub(file)),delim=options$delimiter,col_names=col_names,guess_max=1e5,
              escape_backslash=options$escape_backslash,escape_double=FALSE,trim_ws=TRUE,
              na=options$na_values,skip_empty_rows=TRUE,skip=options$skip_lines+1,
              quote=options$quote,col_types=as.col_spec(col_types),locale=locale))
