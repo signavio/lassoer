@@ -30,9 +30,11 @@ parser <- add_option(parser, c("-q", "--quote"),default='"',
 parser <- add_option(parser, c("-K", "--skip-lines"),default=0,type="integer",
                      help="Specify the number of initial lines to skip before the header row")
 parser <- add_option(parser, c("-I", "--ini-format"),action="store_true",default=FALSE,
-                     help="Output metadata as CDATA Schema.ini format (more or less like TOML)")
+                     help="Output metadata as CDATA Schema.ini format")
 parser <- add_option(parser, c("-b", "--escape-backslash"),action="store_true",default=FALSE,
                      help="Does the file use backslashes to escape special characters? [default: %default]")
+parser <- add_option(parser, c("-c", "--dirty-column-names"),action="store_true",default=FALSE,
+                     help="Should we tell the janitor to not clean dirty column names? [default: %default]")
 parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 
 inspect <- function(file, options) {
@@ -62,7 +64,12 @@ inspect <- function(file, options) {
   schema <- data.frame()
   table_name <- str_extract(basename(file), "[^\\.]+")
   column_name <- names(col_types$cols)
-  cleaned_name <- names(janitor::clean_names(df))
+  #cleaned_name <- names(janitor::clean_names(df))
+  if (options$dirty_column_names) {
+    cleaned_name <- names(col_types$cols)
+  } else {
+    cleaned_name <- names(janitor::clean_names(df)) 
+  }
   data_type <- column_types
   if (options$ini_format) {
     return(generate_cdata_ini(table_name, cleaned_name, data_type))
