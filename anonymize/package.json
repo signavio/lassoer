@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "csv": "5.3.1",
-    "faker": "Marak/faker.js",
+    "faker": "5.5.3",
     "lodash": ">=4.17.19",
     "neodoc": "2.0.2"
   },
