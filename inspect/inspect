@@ -64,7 +64,6 @@ inspect <- function(file, options) {
   schema <- data.frame()
   table_name <- str_extract(basename(file), "[^\\.]+")
   column_name <- names(col_types$cols)
-  #cleaned_name <- names(janitor::clean_names(df))
   if (options$dirty_column_names) {
     cleaned_name <- names(col_types$cols)
   } else {
