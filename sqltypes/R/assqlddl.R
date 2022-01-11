@@ -22,11 +22,16 @@ require(stringr)
 as.sql_ddl <- function(col_spec, locale=default_locale()) {
   type <- class(col_spec)[1]
   format <- col_spec$format
+  if (is.null(format) || format == '') {
+    format <- ''
+  } else {
+    format <- glue::glue("('{to_reference(format)}')")
+  }
   switch(
     type,
     "collector_character" = "VARCHAR",
-    "collector_date" = glue::glue("DATE('{to_reference(format)}')",na=''),
-    "collector_datetime" = glue::glue("TIMESTAMP('{to_reference(format)}')",na=''),
+    "collector_date" = glue::glue("DATE{format}",na=''),
+    "collector_datetime" = glue::glue("TIMESTAMP{format}",na=''),
     "collector_double" = "DECIMAL(38,20)",
     "collector_integer" = "BIGINT",
     # Set collector_logical explicitly to VARCHAR and not BOOLEAN
@@ -35,11 +40,13 @@ as.sql_ddl <- function(col_spec, locale=default_locale()) {
     # interspersed with some real values
     # to be of type BOOLEAN
     "collector_logical" = "VARCHAR",
-    "collector_number" = glue::glue("NUMERIC('8{group}999{dec}99')",
-                                    group = locale$grouping_mark,
-                                    dec = locale$decimal_mark,
-                                    na=''),
-    "collector_time" = glue::glue("TIME('{to_reference(format)}')",na=''),
+    "collector_number" = ifelse(locale$grouping_mark == ',' && locale$decimal_mark == '.',
+				"NUMERIC",
+				glue::glue("NUMERIC('8{group}999{dec}99')",
+                                           group = locale$grouping_mark,
+                                           dec = locale$decimal_mark,
+                                           na='')),
+    "collector_time" = glue::glue("TIME{format}",na=''),
   )
 }
 to_reference<- function(format) {
