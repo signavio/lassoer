@@ -35,11 +35,11 @@ parsed <- parse_args2(parser, args = commandArgs(trailingOnly=TRUE))
 prescrub <- function(file) {
   # Convert input into valid UTF-8 and ignore invalid character sequences
   to_utf8 <- 'uconv --from-callback skip --to-code UTF-8'
-  # Remove all carriage return characters (usually used in dos style line endings)
-  tr <- 'tr -d "\\r"'
+  # Replace dos style line endings with a single newline '\n'
+  unixify <- 'perl -pe "s/\\r\\n?/\\n/g"'
   # Replace control chars (except '\t' and '\n') with single space
   sub_cntrl_chars <- 'perl -pe "s/[\\N{U+00}-\\N{U+08}\\N{U+0B}-\\N{U+1F}\\N{U+7F}]/ /g"'
-  glue('{to_utf8} "{file}" | {tr} | {sub_cntrl_chars}')
+  glue('{to_utf8} "{file}" | {unixify} | {sub_cntrl_chars}')
 }
 read_delim_file <- function(file, options) {
   col_types <- c()
