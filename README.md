@@ -1,4 +1,5 @@
 # Lassoer
+[![REUSE status](https://api.reuse.software/badge/github.com/signavio/lassoer)](https://api.reuse.software/info/github.com/signavio/lassoer)
 
 Add lassoer to your ETL toolkit to clean up dirty, misbehaving text-files and then load them into a SQL database for later transformation.
 
